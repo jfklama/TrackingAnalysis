@@ -6,6 +6,8 @@ import numpy as np
 
 from pyLCIO import IOIMPL, ROOT
 
+import utils
+
 def R(x,y):
 	return math.sqrt(x**2 + y**2)
 def R3(x,y,z):
@@ -31,14 +33,14 @@ TPCRmax = 1974.
 #TPCRmax = 1770.
 TPCZmax = 2350.
 
-trackEffVsR_true = ROOT.TH1F('trackEffVsR_true', 'True vertices', nbins, 0., TPCRmax)
+trackEffVsR_true = ROOT.TH1F('trackEffVsR_true', 'True vertices, p_{track} < 2 GeV', nbins, 0., TPCRmax)
 trackEffVsR_reco = ROOT.TH1F('trackEffVsR_reco', 'N_{evt} with 2 reco. tracks', nbins, 0., TPCRmax)
 
 trackEffRVsZ_true = ROOT.TH2F('trackEffRVsZ_true', 'True vertices', nbins, -TPCZmax, TPCZmax, nbins, 0., TPCRmax)
 trackEffRVsZ_reco = ROOT.TH2F('trackEffRVsZ_reco', 'N_{evt} with 2 reco. tracks', nbins, -TPCZmax, TPCZmax, nbins, 0., TPCRmax)
-trackEffiPvsTheta_true = ROOT.TH2F('trackEffiPvsTheta_true', 'True vertices', 3, 0., 3.15, 15, 0., 15.)
-trackEffiPvsTheta_reco = ROOT.TH2F('trackEffiPvsTheta_reco', 'N reco. tracks', 3, 0., 3.15, 15, 0., 15.)
-trackEffiPvsR_true = ROOT.TH2F('trackEffiPvsR_true', 'True vertices', 15, 0., 15., nbins, 0., TPCRmax)
+trackEffiPvsTheta_true = ROOT.TH2F('trackEffiPvsTheta_true', '', 3, 0., 3.15, 15, 0., 15.)
+trackEffiPvsTheta_reco = ROOT.TH2F('trackEffiPvsTheta_reco', '', 3, 0., 3.15, 15, 0., 15.)
+trackEffiPvsR_true = ROOT.TH2F('trackEffiPvsR_true', '', 15, 0., 15., nbins, 0., TPCRmax)
 
 
 momTrack_true = ROOT.TH1F('momTrack_true', 'True momentum of track', 50, 0., 15.)
@@ -48,6 +50,7 @@ thetaTrack_reco = ROOT.TH1F('thetaTrack_reco', 'True polar angle of reco. track'
 
 h_nTracks = ROOT.TH1F('h_nTracks', 'Number of tracks', 20, 0., 20.)
 h_relWeights = ROOT.TH1F('h_relWeights', 'Number of weights', 50, 0., 2.)
+h_angDist = ROOT.TH1F('h_angDist', 'Angular separation', 70, 0., 7)
 
 recoVertices = ROOT.TH2F('recoVertices', 'N_{evt} with 2 reco. leptons', nbins, -TPCZmax, TPCZmax, nbins, 0., TPCRmax)
 
@@ -70,6 +73,8 @@ for event in reader:
 	#tpcCollection = event.getCollection('TPCCollection')
 	trackCollection = event.getCollection('MarlinTrkTracks')
 	trackToMCLinkCollection = event.getCollection('MarlinTrkTracksMCTruthLink')
+	# trackCollection = event.getCollection('ClupatraTracks')
+	# trackToMCLinkCollection = event.getCollection('ClupatraTracksMCTruthLink')
 	pfoCollection = event.getCollection('PandoraPFOs')
 	#vertexCollection = event.getCollection('PandoraPFANewStartVertices')
 
@@ -90,12 +95,12 @@ for event in reader:
 		#print (i, 'A outside acceptance')
 		continue
 
-	trackEffVsR_true.Fill(trueR, 2.)
-	trackEffRVsZ_true.Fill(trueZ,trueR, 2.)
+	#trackEffVsR_true.Fill(trueR, 2.)
+	#trackEffRVsZ_true.Fill(trueZ,trueR, 2.)
 
 	nMuons = 0
 	nElectrons = 0
-	lepP4 = ROOT.TLorentzVector()
+	mclepP4 = ROOT.TLorentzVector()
 	for particle in mcCollection:
 		if(particle.getGeneratorStatus() == 1):
 			e = particle.getEnergy()
@@ -103,29 +108,37 @@ for event in reader:
 			py = particle.getMomentum()[1]
 			pz = particle.getMomentum()[2]
 			p = R3(px,py,pz)
-			lepP4.SetPxPyPzE(px,py,pz,e)
-			cosTheta = abs(math.cos(lepP4.Theta()))
+			mclepP4.SetPxPyPzE(px,py,pz,e)
+			cosTheta = abs(math.cos(mclepP4.Theta()))
 			if abs( particle.getPDG() ) == 11:
 				nElectrons+=1
-				#if trueR < 450 and abs(trueZ) < 400 and (lepP4.Theta() > 1 and lepP4.Theta() < 2.14):
+				#if trueR < 450 and abs(trueZ) < 400 and (mclepP4.Theta() > 1 and mclepP4.Theta() < 2.14):
+				#if mclepP4.Theta() > 1 and mclepP4.Theta() < 2.14:
+				trackEffVsR_true.Fill(trueR)
+				trackEffRVsZ_true.Fill(trueZ,trueR)
 				momTrack_true.Fill(p)
-				thetaTrack_true.Fill(lepP4.Theta())
-				trackEffiPvsTheta_true.Fill(lepP4.Theta(),p)
+				#if trueR < 600 and abs(trueZ) < 400:
+				thetaTrack_true.Fill(mclepP4.Theta())
+				trackEffiPvsTheta_true.Fill(mclepP4.Theta(),p)
 				trackEffiPvsR_true.Fill(p,trueR)
 			if abs( particle.getPDG() ) == 13:
 				nMuons+=1
-				#if trueR < 450 and abs(trueZ) < 400 and (lepP4.Theta() > 1 and lepP4.Theta() < 2.14):
+				#if trueR < 450 and abs(trueZ) < 400 and (mclepP4.Theta() > 1 and mclepP4.Theta() < 2.14):
+				#if mclepP4.Theta() > 1 and mclepP4.Theta() < 2.14:
+				trackEffVsR_true.Fill(trueR)
+				trackEffRVsZ_true.Fill(trueZ,trueR)
 				momTrack_true.Fill(p)
-				thetaTrack_true.Fill(lepP4.Theta())
-				trackEffiPvsTheta_true.Fill(lepP4.Theta(),p)
+				#if trueR < 600 and abs(trueZ) < 400:
+				thetaTrack_true.Fill(mclepP4.Theta())
+				trackEffiPvsTheta_true.Fill(mclepP4.Theta(),p)
 				trackEffiPvsR_true.Fill(p,trueR)
-		if nElectrons > 1 or nMuons > 1 or (nElectrons>0 and nMuons>0):
-			break
+		#if nElectrons > 1 or nMuons > 1 or (nElectrons>0 and nMuons>0):
+		#	break
 		if nElectrons>0 and nMuons>0:
 			print (i, 'electron and muon!')
-	if nElectrons<1 and nMuons<1:
-		print (i, 'WARNING: no MC electrons and muons!')
-		continue
+	#if nElectrons<1 and nMuons<1:
+	#	print (i, 'WARNING: no MC electrons and muons!')
+	#	continue
 	if nElectrons+nMuons != 2:
 		print (i, nElectrons+nMuons, " not 2 leptons in an event!")
 
@@ -147,34 +160,50 @@ for event in reader:
 		if(particle.getGeneratorStatus() == 1):
 			for track in trackToMCLinkCollection:
 				h_relWeights.Fill(track.getWeight())
-				if track.getTo() == particle and track.getWeight() >= 1.0:
-					allMatchingTracks+=1
+				#if track.getTo() == particle and track.getWeight() >= 1.0:
+					#allMatchingTracks+=1
 					#print track.getWeight()
 
 
 	# fill histos if tracks are matching
 	#if matchingTracks > -1:
+	matchingTracksInEvent = 0
 	matchingTracks = 0
 	for particle in mcCollection:
+		if matchingTracksInEvent > 1:
+			break
 		if(particle.getGeneratorStatus() == 1):
 			px = particle.getMomentum()[0]
 			py = particle.getMomentum()[1]
 			pz = particle.getMomentum()[2]
 			p = R3(px,py,pz)
 			e = particle.getEnergy()
-			lepP4.SetPxPyPzE(px,py,pz,e)
-			cosTheta = abs( math.cos(lepP4.Theta()) )
+			mclepP4.SetPxPyPzE(px,py,pz,e)
+			cosTheta = abs( math.cos(mclepP4.Theta()) )
 			#print (i, "genStatus = 1")
-			for track in trackToMCLinkCollection:
-				if track.getTo() == particle and track.getWeight() >= 1.0:
-					#if trueR < 450 and abs(trueZ) < 400 and (lepP4.Theta() > 1 and lepP4.Theta() < 2.14):
+			for trackRel in trackToMCLinkCollection:
+				trackState = trackRel.getFrom().getTrackState(2) # 1 = atIP, 2 = atFirstHit
+				momentum = utils.getTrackMomentum(trackState)
+				p_tr = ROOT.TVector3()
+				p_tr.SetXYZ(momentum[0],momentum[1],momentum[2])
+				dist = utils.angularDistance( p_tr.Theta(), mclepP4.Theta(), p_tr.Phi(), mclepP4.Phi()  )
+				h_angDist.Fill(dist)
+				#if track.getTo() == particle and track.getWeight() >= 0.8 and track.getWeight() <= 0.9:
+				#if trackRel.getTo() == particle and trackRel.getWeight() >= 0.8 \
+				if trackRel.getTo() == particle \
+				and trackRel.getTo().getCharge() * utils.getTrackCharge(trackState) > 0 \
+				and dist < 0.2:
+					#print i, particle.id(), track.getWeight()
+					#if mclepP4.Theta() > 1 and mclepP4.Theta() < 2.14:
 					momTrack_reco.Fill(p)
-					thetaTrack_reco.Fill(lepP4.Theta())
-					trackEffiPvsTheta_reco.Fill(lepP4.Theta(),p)
+					#if trueR < 600 and abs(trueZ) < 400:
+					thetaTrack_reco.Fill(mclepP4.Theta())
+					trackEffiPvsTheta_reco.Fill(mclepP4.Theta(),p)
 					trackEffVsR_reco.Fill(trueR)
 					trackEffRVsZ_reco.Fill(trueZ,trueR)
 					#print (i,particle.getPDG(),track.getWeight())
-					matchingTracks+=1
+					allMatchingTracks+=1
+					matchingTracksInEvent+=1
 					break
 				#if track.getWeight() > 0.9 and track.getWeight() < 1.0:
 					#print (i, matchingTracks, numberOfTracks)
@@ -191,10 +220,10 @@ for event in reader:
 				py = particle.getMomentum()[1]
 				pz = particle.getMomentum()[2]
 				p = R3(px,py,pz)
-				lepP4.SetPxPyPzE(px,py,pz,e)
+				mclepP4.SetPxPyPzE(px,py,pz,e)
 				momTrack_reco.Fill(p)
-				thetaTrack_reco.Fill(lepP4.Theta())
-				trackEffiPvsTheta_reco.Fill(abs(math.cos(lepP4.Theta())),p)
+				thetaTrack_reco.Fill(mclepP4.Theta())
+				trackEffiPvsTheta_reco.Fill(abs(math.cos(mclepP4.Theta())),p)
 				trackEffVsR_reco.Fill(trueR)
 				trackEffRVsZ_reco.Fill(trueZ,trueR)
 		'''
@@ -286,6 +315,7 @@ thetaTrack.SetMarkerSize(0.5)
 thetaTrack.Draw('ap')
 c0.SaveAs('plots/idm/'+massSplit+'/thetaTrack_'+massSplit+'.pdf')
 
+trackEffVsR_true.Scale( 1./trackEffVsR_true.Integral() )
 trackEffVsR_true.Draw('hist')
 c0.SaveAs('plots/idm/'+massSplit+'/R_true_'+massSplit+'.pdf')
 trackEffVsR_reco.Draw('hist')
@@ -299,6 +329,8 @@ h_nTracks.Draw('hist')
 c0.SaveAs('plots/idm/'+massSplit+'/nTracks_'+massSplit+'.pdf')
 h_relWeights.Draw('hist')
 c0.SaveAs('plots/idm/'+massSplit+'/relWeights_'+massSplit+'.pdf')
+h_angDist.Draw('hist')
+c0.SaveAs('plots/idm/'+massSplit+'/angularDistance_'+massSplit+'.pdf')
 hmass.Draw('hist')
 c0.SaveAs('plots/idm/'+massSplit+'/mass_'+massSplit+'.pdf')
 
@@ -330,7 +362,7 @@ line4.Draw('same')
 c1.SaveAs('plots/idm/'+massSplit+'/trackEffRVsZ_'+massSplit+'.pdf')
 
 trackEffiPvsTheta = ROOT.TEfficiency(trackEffiPvsTheta_reco,trackEffiPvsTheta_true)
-trackEffiPvsTheta.SetTitle('Track reconstruction efficiency;|cos(#theta_{track})|;Momentum;Efficiency')
+trackEffiPvsTheta.SetTitle('Track reconstruction efficiency;#theta_{track};Momentum;Efficiency')
 trackEffiPvsTheta.Draw('colz text')
 line1.Draw('same')
 line2.Draw('same')
@@ -362,7 +394,7 @@ c1.SaveAs('plots/idm/'+massSplit+'/recoVerticesRVsZ_'+massSplit+'.pdf')
 
 trackEffiPvsTheta_true.SetYTitle('p [GeV]')
 trackEffiPvsTheta_true.SetXTitle('#theta_{track}')
-trackEffiPvsTheta_true.SetZTitle('Number of events')
+trackEffiPvsTheta_true.SetZTitle('Number of tracks')
 trackEffiPvsTheta_true.SetStats(0)
 #trackEffiPvsTheta_true.Scale( 1./trackEffiPvsTheta_true.Integral() )
 trackEffiPvsTheta_true.Draw('colz text')
@@ -374,7 +406,7 @@ c1.SaveAs('plots/idm/'+massSplit+'/trackEffiPvsTheta_true_'+massSplit+'.pdf')
 
 trackEffiPvsTheta_reco.SetYTitle('p [GeV]')
 trackEffiPvsTheta_reco.SetXTitle('#theta_{track}')
-trackEffiPvsTheta_reco.SetZTitle('Number of events')
+trackEffiPvsTheta_reco.SetZTitle('Number of tracks')
 trackEffiPvsTheta_reco.SetStats(0)
 #trackEffiPvsTheta_reco.Scale( 1./trackEffiPvsTheta_reco.Integral() )
 trackEffiPvsTheta_reco.Draw('colz text')
@@ -386,7 +418,7 @@ c1.SaveAs('plots/idm/'+massSplit+'/trackEffiPvsTheta_reco_'+massSplit+'.pdf')
 
 trackEffiPvsR_true.SetYTitle('R [mm]')
 trackEffiPvsR_true.SetXTitle('p [GeV]')
-trackEffiPvsR_true.SetZTitle('Number of events')
+trackEffiPvsR_true.SetZTitle('Number of tracks')
 trackEffiPvsR_true.SetStats(0)
 #trackEffiPvsR_true.Scale( 1./trackEffiPvsR_true.Integral() )
 trackEffiPvsR_true.Draw('colz text')
