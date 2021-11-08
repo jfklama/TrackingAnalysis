@@ -44,6 +44,14 @@ def getTrackCharge(track):
 	charge = omega/abs(omega)
 	return charge
 
+def phiDistance(phi1, phi2):
+
+	dPhi = phi1 - phi2
+	if abs(dPhi) > math.pi:
+		dPhi = 2 * math.pi - abs(dPhi)
+
+	return dPhi
+
 def angularDistance(theta1, theta2, phi1, phi2):
 
 	dPhi = phi1 - phi2
@@ -55,7 +63,7 @@ def angularDistance(theta1, theta2, phi1, phi2):
 	phi1   += math.pi
 	'''
 
-	dist = math.sqrt( (theta1-theta2)**2 * (math.sin(theta1-theta2))**2 + (dPhi)**2 )
+	dist = math.sqrt( (theta1-theta2)**2 * (math.sin((theta1+theta2)/2))**2 + (dPhi)**2 )
 	#dist = math.acos( \
 	#	   math.cos(theta1) * math.cos(phi1) * math.cos(theta2) * math.cos(phi2) \
 	# 	 + math.cos(theta1) * math.sin(phi1) * math.cos(theta2) * math.sin(phi2) \
