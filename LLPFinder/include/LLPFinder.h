@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 #include "TrackPair.h"
+#include "IMPL/TrackStateImpl.h"
+
 
 using namespace lcio ;
 using namespace marlin ;
@@ -74,6 +76,8 @@ class LLPFinder : public Processor {
   void Sorting( TrackPairVec & trkPairVec );
   float Rmin( Track* track );
   std::vector<float> getHitDists( Track* firstTrack, Track* secondTrack );
+  TrackStateImpl flipTrackState( TrackState *ts );
+  TrackStateImpl fixTrackStateDirection( TrackState* ts, TrackState* other_ts );
 
   int _nRun{};
   int _nEvt{};

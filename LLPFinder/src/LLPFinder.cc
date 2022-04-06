@@ -166,58 +166,82 @@ void LLPFinder::processEvent( LCEvent * evt ) {
     for (int i=0;i<nelem-1;++i) {
       Track * firstTrack = dynamic_cast<Track*>(col->getElementAt(i));
 
-      TrackStateImpl firstTrackFHTS = *(firstTrack->getTrackState(lcio::TrackState::AtFirstHit));
-      TrackStateImpl firstTrackLHTS = *(firstTrack->getTrackState(lcio::TrackState::AtLastHit));
+      TrackState *firstTrackFHTS = (TrackState*) firstTrack->getTrackState(lcio::TrackState::AtFirstHit);
+      TrackState *firstTrackLHTS = (TrackState*) firstTrack->getTrackState(lcio::TrackState::AtLastHit);
 
       float ftFirstHitLoc[3];
       float ftLastHitLoc[3];
       for (int idx=0;idx<3;idx++){
-	      ftFirstHitLoc[idx] = *(firstTrackFHTS.getReferencePoint()+idx);
-	      ftLastHitLoc[idx] = *(firstTrackFHTS.getReferencePoint()+idx);
+	      ftFirstHitLoc[idx] = *(firstTrackFHTS->getReferencePoint()+idx);
+	      ftLastHitLoc[idx] = *(firstTrackLHTS->getReferencePoint()+idx);
       }
-
-      float d01 = firstTrack->getD0();
-      float z01 = firstTrack->getZ0();
-      float phi1 = firstTrack->getPhi();
-      float tanLambda1 = firstTrack->getTanLambda();
-      float omega1 = firstTrack->getOmega();
-      HelixClass firstHelix;
-      firstHelix.Initialize_Canonical(phi1,d01,z01,omega1,tanLambda1,_bField);
-      float charge1 = firstHelix.getCharge();
-
-      float r1 = firstTrack->getRadiusOfInnermostHit();
 
       for (int j=i+1;j<nelem;++j) {
 	Track * secondTrack = dynamic_cast<Track*>(col->getElementAt(j));
 
-	std::cout << " ***************** candidate tracks : "
+	streamlog_out( DEBUG0 ) << " ***************** candidate tracks : "
 				    << " t" << i << " " << lcshort( firstTrack ) << "\n"
 				    << " t" << j << " " << lcshort( secondTrack )
 				    << std::endl ;
 
-      	TrackStateImpl secondTrackFHTS = *(secondTrack->getTrackState(lcio::TrackState::AtFirstHit));
-      	TrackStateImpl secondTrackLHTS = *(secondTrack->getTrackState(lcio::TrackState::AtLastHit));
+      	TrackState *secondTrackFHTS = (TrackState*) secondTrack->getTrackState(lcio::TrackState::AtFirstHit);
+      	TrackState *secondTrackLHTS = (TrackState*) secondTrack->getTrackState(lcio::TrackState::AtLastHit);
 
       	float stFirstHitLoc[3];
         float stLastHitLoc[3];
         for (int idx=0;idx<3;idx++){
-		stFirstHitLoc[idx] = *(secondTrackFHTS.getReferencePoint()+idx);
-		stLastHitLoc[idx] = *(secondTrackLHTS.getReferencePoint()+idx);
+      		stFirstHitLoc[idx] = *(secondTrackFHTS->getReferencePoint()+idx);
+      		stLastHitLoc[idx] = *(secondTrackLHTS->getReferencePoint()+idx);
         }
+
+        // find smallest distance between tracks first/last hits
+    	  std::vector<float> hitDists = getHitDists(firstTrack,secondTrack);
+    	  int minDistIndex = std::min_element(hitDists.begin(),hitDists.end()) - hitDists.begin();
+    	  float minDist = *std::min_element(hitDists.begin(), hitDists.end());
+
+        TrackStateImpl firstTrackState;
+        TrackStateImpl secondTrackState;
+        if(minDistIndex==0) {
+          firstTrackState = fixTrackStateDirection(firstTrackFHTS,firstTrackLHTS);
+          secondTrackState = fixTrackStateDirection(secondTrackFHTS,secondTrackLHTS);
+        }
+        if(minDistIndex==1) {
+          firstTrackState=fixTrackStateDirection(firstTrackFHTS,firstTrackLHTS);
+          secondTrackState=fixTrackStateDirection(secondTrackLHTS,secondTrackFHTS);
+        }
+        if(minDistIndex==2) {
+          firstTrackState=fixTrackStateDirection(firstTrackLHTS,firstTrackFHTS);
+          secondTrackState=fixTrackStateDirection(secondTrackFHTS,secondTrackLHTS);
+        }
+        if(minDistIndex==3) {
+          firstTrackState=fixTrackStateDirection(firstTrackLHTS,firstTrackFHTS);
+          secondTrackState=fixTrackStateDirection(secondTrackLHTS,secondTrackFHTS);
+        }
+
+  float d01 = firstTrackState.getD0();
+  float z01 = firstTrackState.getZ0();
+  float phi1 = firstTrackState.getPhi();
+  float tanLambda1 = firstTrackState.getTanLambda();
+  float omega1 = firstTrackState.getOmega();
+  HelixClass firstHelix;
+  firstHelix.Initialize_Canonical(phi1,d01,z01,omega1,tanLambda1,_bField);
+  float charge1 = firstHelix.getCharge();
+
+  float r1 = firstTrack->getRadiusOfInnermostHit();
 
 	float r2 = secondTrack->getRadiusOfInnermostHit();
 
-	float d02 = secondTrack->getD0();
-	float z02 = secondTrack->getZ0();
-	float phi2 = secondTrack->getPhi();
-	float tanLambda2 = secondTrack->getTanLambda();
-	float omega2 = secondTrack->getOmega();
+	float d02 = secondTrackState.getD0();
+	float z02 = secondTrackState.getZ0();
+	float phi2 = secondTrackState.getPhi();
+	float tanLambda2 = secondTrackState.getTanLambda();
+	float omega2 = secondTrackState.getOmega();
 	HelixClass secondHelix;
 	secondHelix.Initialize_Canonical(phi2,d02,z02,omega2,tanLambda2,_bField);
 	float charge2 = secondHelix.getCharge();
 	float prodCharge = charge1*charge2;
-	//if (prodCharge<0) { // two tracks with opposite charges
-	if (1) { // FIXME requirement for opposite charges nontrivial for LLPs
+	if (prodCharge<0) { // two tracks with opposite charges
+	//if (1) { // FIXME requirement for opposite charges nontrivial for LLPs
 
 	  float px1 = firstHelix.getMomentum()[0];
 	  float py1 = firstHelix.getMomentum()[1];
@@ -237,21 +261,14 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  float vertex[3];
 	  float llp_vtx[3];
 
-    //if (pp1>pp2) {
-    if (pt1>pt2) {
+    if (pp1>pp2) {
+    //if (pt1>pt2) {
 	    distV0 = firstHelix.getDistanceToHelix(&secondHelix, vertex, momentum);
 
 	  }
 	  else {
 	    distV0 = secondHelix.getDistanceToHelix(&firstHelix, vertex, momentum);
 	  }
-
-	  // find smallest distance between tracks first/last hits
-	  std::vector<float> hitDists = getHitDists(firstTrack,secondTrack);
-	  int minDistIndex = std::min_element(hitDists.begin(),hitDists.end()) - hitDists.begin();
-	  float minDist = *std::min_element(hitDists.begin(), hitDists.end());
-
-	  //if(minDist > _rHitCut) continue;
 
 	  if (pt1>pt2) {
 	    if(minDistIndex==0 || minDistIndex==1) {for(int idx=0;idx<3;idx++) llp_vtx[idx] = ftFirstHitLoc[idx];}
@@ -265,11 +282,16 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  float radV0 = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
 	  float radLLP = sqrt(llp_vtx[0]*llp_vtx[0]+llp_vtx[1]*llp_vtx[1]);
 
-	   std::cout << " ***************** the vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) llp_vtx )
+    streamlog_out( DEBUG0 ) << " ***************** the vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
+              << " with Ref. Point t1 : " << dd4hep::rec::Vector3D( (const float*) firstTrackState.getReferencePoint() )
+              << " and Ref. Point t2 : " << dd4hep::rec::Vector3D( (const float*) secondTrackState.getReferencePoint() ) << "\n"
 				    << " t1 " << lcshort( firstTrack ) << "\n"
 				    << " t2 " << lcshort( secondTrack )
 				    << " distLLP " << radLLP
 				    << std::endl ;
+    streamlog_out( DEBUG0 ) << " ***************** first/last hits distances: ";
+    for (int idx=0; idx<4; idx++) streamlog_out( DEBUG0 ) << hitDists[idx] << " ";
+    streamlog_out( DEBUG0 ) << " min distance: " << minDist << " at index " << minDistIndex << std::endl;
 
 
 	  // check to ensure there are no hits on tracks at radii significantly smaller than reconstructed vertex
@@ -277,21 +299,22 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  //if(r1/radV0<_minTrackHitRatio)continue;
 	  //if(r2/radV0<_minTrackHitRatio)continue;
 
-	 //std::cout << "                       V0 : " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
+	 //streamlog_out( DEBUG0 ) << "                       V0 : " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
 
 	  //	  if (distV0 < _dVertCut && radV0 > _rVertCut ) { // cut on vertex radius and track misdistance
 	  if (radV0 > _rVertCut  ) {
 
-	    //std::cout << " ***************** found vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
+	    //streamlog_out( DEBUG0 ) << " ***************** found vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
 		//		    << " t1 " << lcshort( firstTrack ) << "\n"
 		//		    << " t2 " << lcshort( secondTrack )
 		///	    << " distV0 " << distV0
 		//		    << std::endl ;
 
-	    if( distV0 < _dVertCut ) { // cut on vertex radius and track misdistance
+    //if( distV0 < _dVertCut ) { // cut on vertex radius and track misdistance
+    if( minDist < _rHitCut ) { // cut distance between first/last hits
 
 
-	    std::cout << "  ***** testing various hypotheses " << std::endl ;
+	    streamlog_out( DEBUG0 ) << "  ***** testing various hypotheses " << std::endl ;
 
 	    // Testing K0 hypothesis
 	    float energy1 = sqrt(pp1*pp1+MASSPion*MASSPion);
@@ -359,7 +382,7 @@ void LLPFinder::processEvent( LCEvent * evt ) {
               }
             }
 
-	   std::cout << "  ***** mass condition :  " <<  massCondition
+	   streamlog_out( DEBUG0 ) << "  ***** mass condition :  " <<  massCondition
 				  << "  code : " << code  << std::endl ;
 
 	    // if (massCondition) {
@@ -369,30 +392,33 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 		r1 = this->Rmin(firstTrack);
 		r2 = this->Rmin(secondTrack);
 		if(r1/radV0<_minTrackHitRatio || r2/radV0<_minTrackHitRatio)ok = false;
-		//std::cout << " V0X: " << ok << " r = " << radV0 << " r1 = " << r1 << " r2 = " << r2 << std::endl;
+		//streamlog_out( DEBUG0 ) << " V0X: " << ok << " r = " << radV0 << " r1 = " << r1 << " r2 = " << r2 << std::endl;
 	      }
 	      //if(!ok)continue;
 	      TrackPair * trkPair = new TrackPair();
 	      trkPair->setFirstTrack( firstTrack );
 	      trkPair->setSecondTrack( secondTrack );
-	      trkPair->setDistance( distV0 );
-	      trkPair->setVertex( vertex );
+        //trkPair->setDistance( distV0 );
+        trkPair->setDistance( minDist );
+        //trkPair->setVertex( vertex );
+        trkPair->setVertex( llp_vtx );
 	      trkPair->setMomentum( momentum );
 	      trkPair->setCode( code );
 	      trkPairs.push_back( trkPair );
-	      std::cout << "!!!!   Track Pair saved !!!!" << std::endl;
+	      streamlog_out( DEBUG0 ) << "!!!!   Track Pair saved !!!!" << std::endl;
 
 	    //}
 	    /* else {
- 	      std::cout << "Rejected vertex : V = ("
+ 	      streamlog_out( DEBUG0 ) << "Rejected vertex : V = ("
  			<< vertex[0] << ","
  			<< vertex[1] << ","
  			<< vertex[2] << ")" << std::endl;
 	    } */
 
- 	    std::cout << "Code = " << code << std::endl;
- 	    std::cout << "Vertex = " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
- 	    std::cout << "Momentum = " << momentum[0] << " " << momentum[1] << " " << momentum[2] << std::endl;
+ 	    streamlog_out( DEBUG0 ) << "Code = " << code << std::endl;
+      //streamlog_out( DEBUG0 ) << "Vertex = " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
+      streamlog_out( DEBUG0 ) << "Vertex = " << llp_vtx[0] << " " << llp_vtx[1] << " " << llp_vtx[2] << std::endl;
+ 	    streamlog_out( DEBUG0 ) << "Momentum = " << momentum[0] << " " << momentum[1] << " " << momentum[2] << std::endl;
 
 
 	  }
@@ -402,16 +428,16 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 
     }//MESSAGE ------
 
-     std::cout << std::endl;
+     streamlog_out( DEBUG0 ) << std::endl;
 
     // Sorting of all vertices in ascending order of the track misdistance
 
     int nTrkPairs = int(trkPairs.size());
-    std::cout << "Number of track pairs = " << nTrkPairs << std::endl;
+    streamlog_out( DEBUG0 ) << "Number of track pairs = " << nTrkPairs << std::endl;
 
     if (nTrkPairs>0) { // V0s are present in event
 
-            //std::cout << "Number of track pairs = " << nTrkPairs << std::endl;
+            //streamlog_out( DEBUG0 ) << "Number of track pairs = " << nTrkPairs << std::endl;
 
       Sorting( trkPairs );
 
@@ -443,17 +469,17 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  part->setMomentum( momentum );
 	  part->setType( code );
 
- 	  std::cout << "Code = " << code << "  Distance = " << distance << std::endl;
- 	  std::cout << "Vertex = ("
+ 	  streamlog_out( DEBUG0 ) << "Code = " << code << "  Distance = " << distance << std::endl;
+ 	  streamlog_out( DEBUG0 ) << "Vertex = ("
  		    << vertex[0] << ","
  		    << vertex[1] << ","
  		    << vertex[2] << ")" << std::endl;
 
- 	  std::cout << "Momentum = ("
+ 	  streamlog_out( DEBUG0 ) << "Momentum = ("
  		    << momentum[0] << ","
  		    << momentum[1] << ","
  		    << momentum[2] << ")" << std::endl;
- 	  std::cout << firstTrack << " " << secondTrack << std::endl;
+ 	  streamlog_out( DEBUG0 ) << firstTrack << " " << secondTrack << std::endl;
 
 
 	  float mass = 0;
@@ -473,8 +499,8 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  colRecoPart->addElement( part );
 	  colVertex->addElement( vtx );
 
-	  trackUsed[firstTrack] = 1;
-	  trackUsed[secondTrack] = 1;
+	  //trackUsed[firstTrack] = 1;
+	  //trackUsed[secondTrack] = 1;
 	}
       }
 
@@ -541,14 +567,14 @@ float LLPFinder::Rmin( Track* track ) {
     if(z>zmax)zmax=z;
   }
   float tanLambda = track->getTanLambda();
-  //  std::cout << " V0 Check : " << tanLambda << " z = " << zmin << " - " << zmax << std::endl;
+  //  streamlog_out( DEBUG0 ) << " V0 Check : " << tanLambda << " z = " << zmin << " - " << zmax << std::endl;
   float zzz = zmin;
   if(tanLambda<0)zzz=zmax;
 
   float zstart = 0;
   if(fabs(zmin)<fabs(zmax))zstart = zmin;
   if(fabs(zmax)<fabs(zmin))zstart = zmax;
-  //std::cout << " V0 Check " << zstart << " - " << zzz << std::endl;
+  //streamlog_out( DEBUG0 ) << " V0 Check " << zstart << " - " << zzz << std::endl;
   for(int ih =0;ih<nhits;++ih){
     float z = (float)hitvec[ih]->getPosition()[2];
     if(fabs(z-zstart)<250){
@@ -574,10 +600,24 @@ std::vector<float> LLPFinder::getHitDists( Track* firstTrack, Track* secondTrack
 
       float ftFirstHitLoc[3];
       float ftLastHitLoc[3];
+
       for (int idx=0;idx<3;idx++){
 	      ftFirstHitLoc[idx] = *(firstTrackFHTS.getReferencePoint()+idx);
-	      ftLastHitLoc[idx] = *(firstTrackFHTS.getReferencePoint()+idx);
+	      ftLastHitLoc[idx] = *(firstTrackLHTS.getReferencePoint()+idx);
       }
+
+      streamlog_out( DEBUG0 ) << " ------- First Track: \n";
+      streamlog_out( DEBUG0 ) << " - first hit: ";
+      for (int idx=0;idx<3;idx++){
+	      streamlog_out( DEBUG0 ) << ftFirstHitLoc[idx] << " ";
+      }
+      streamlog_out( DEBUG0 ) << "\n";
+      streamlog_out( DEBUG0 ) << " - last hit: ";
+      for (int idx=0;idx<3;idx++){
+	      streamlog_out( DEBUG0 ) << ftLastHitLoc[idx] << " ";
+      }
+      streamlog_out( DEBUG0 ) << "\n";
+
 
       TrackStateImpl secondTrackFHTS = *(secondTrack->getTrackState(lcio::TrackState::AtFirstHit));
       TrackStateImpl secondTrackLHTS = *(secondTrack->getTrackState(lcio::TrackState::AtLastHit));
@@ -589,6 +629,18 @@ std::vector<float> LLPFinder::getHitDists( Track* firstTrack, Track* secondTrack
 	stLastHitLoc[idx] = *(secondTrackLHTS.getReferencePoint()+idx);
       }
 
+      streamlog_out( DEBUG0 ) << " ------- Second Track: \n";
+      streamlog_out( DEBUG0 ) << " - first hit: ";
+      for (int idx=0;idx<3;idx++){
+	      streamlog_out( DEBUG0 ) << stFirstHitLoc[idx] << " ";
+      }
+      streamlog_out( DEBUG0 ) << "\n";
+      streamlog_out( DEBUG0 ) << " - last hit: ";
+      for (int idx=0;idx<3;idx++){
+	      streamlog_out( DEBUG0 ) << stLastHitLoc[idx] << " ";
+      }
+      streamlog_out( DEBUG0 ) << "\n";
+
       dists.push_back( sqrt( pow((ftFirstHitLoc[0]-stFirstHitLoc[0]),2) + pow((ftFirstHitLoc[1]-stFirstHitLoc[1]),2) + pow((ftFirstHitLoc[2]-stFirstHitLoc[2]),2) ) );
       dists.push_back( sqrt( pow((ftFirstHitLoc[0]-stLastHitLoc[0]),2) + pow((ftFirstHitLoc[1]-stLastHitLoc[1]),2) + pow((ftFirstHitLoc[2]-stLastHitLoc[2]),2) ) );
       dists.push_back( sqrt( pow((ftLastHitLoc[0]-stFirstHitLoc[0]),2) + pow((ftLastHitLoc[1]-stFirstHitLoc[1]),2) + pow((ftLastHitLoc[2]-stFirstHitLoc[2]),2) ) );
@@ -596,4 +648,66 @@ std::vector<float> LLPFinder::getHitDists( Track* firstTrack, Track* secondTrack
 
       return dists;
 
+}
+
+TrackStateImpl LLPFinder::flipTrackState( TrackState* ts ) {
+
+  int loc = ts->getLocation();
+	float d0 = ts->getD0();
+	float z0 = ts->getZ0();
+	float phi0 = ts->getPhi();
+	float tanLambda = ts->getTanLambda();
+	float omega = ts->getOmega();
+
+  float refPoint[3];
+	for (int iref=0; iref<3; iref++) refPoint[iref] = ts->getReferencePoint()[iref];
+
+  FloatVec covMatrix;
+  int covSize = ts->getCovMatrix().size();
+  covMatrix.resize(covSize);
+  for (int icov=0; icov<covSize; icov++) covMatrix[icov]=ts->getCovMatrix()[icov];
+
+  float phi = phi0;
+	if (phi0 > 0) phi = -1*(M_PI - phi);
+	else phi = M_PI + phi;
+
+  TrackStateImpl flipped_ts;
+
+  flipped_ts.setLocation(loc);
+	flipped_ts.setD0(-d0);
+	flipped_ts.setPhi(phi);
+	flipped_ts.setOmega(-omega);
+	flipped_ts.setZ0(z0);
+	flipped_ts.setTanLambda(-tanLambda);
+	flipped_ts.setReferencePoint(refPoint);
+	flipped_ts.setCovMatrix(covMatrix);
+
+  return flipped_ts;
+
+}
+
+TrackStateImpl LLPFinder::fixTrackStateDirection( TrackState* ts, TrackState* other_ts ) {
+
+  float d0 = ts->getD0();
+  float z0 = ts->getZ0();
+  float phi = ts->getPhi();
+  float tanLambda = ts->getTanLambda();
+  float omega = ts->getOmega();
+  HelixClass helix;
+  helix.Initialize_Canonical(phi,d0,z0,omega,tanLambda,_bField);
+
+  int direction = 1;
+	if (ts->getReferencePoint()[2] > other_ts->getReferencePoint()[2])
+		direction = -1;
+
+  TrackStateImpl fixed_ts;
+
+  if (direction * helix.getMomentum()[2] > 0)
+		fixed_ts = *ts;
+	else if (direction * helix.getMomentum()[2] < 0)
+		fixed_ts = flipTrackState(ts);
+	else
+		streamlog_out(ERROR0) << " dir * p_z = " << direction * helix.getMomentum()[2] << std::endl;
+
+  return fixed_ts;
 }
