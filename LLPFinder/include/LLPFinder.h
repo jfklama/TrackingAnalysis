@@ -84,11 +84,7 @@ class LLPFinder : public Processor {
 
   std::string _trackColName{};
   std::string _vertexColName{};
-  std::string _recoPartColName{};
-  std::string _llpVertexColName{};
-
-  float _rVertCut{};
-  float _dVertCut{};
+  //std::string _recoPartColName{};
 
   float _rHitCut{};
 
@@ -97,21 +93,6 @@ class LLPFinder : public Processor {
 
   float _bField{};
 
-  float MASSProton{};
-  float MASSPion{};
-  float MASSLambda0{};
-  float MASSK0S{};
-  float MASSGamma{};
-
-  float _deltaMassK0S{};
-  float _deltaMassL0{};
-  float _deltaMassGamma{};
-
-  float _rxyCutGamma{};
-  float _rxyCutK0S{};
-  float _rxyCutLambda{};
-
-  float _minTrackHitRatio{};
 
 } ;
 
