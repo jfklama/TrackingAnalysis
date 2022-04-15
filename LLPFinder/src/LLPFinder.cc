@@ -68,6 +68,16 @@ LLPFinder::LLPFinder() : Processor("LLPFinder") {
 			     _rHitCut,
 			     float(100.0));
 
+  registerProcessorParameter("UseHelixDistance",
+			     "Use helix distance method to find vertex",
+			     _useHelixDist,
+			     bool(false));
+
+  registerProcessorParameter("UseCutOnHelixDistance",
+			     "Use cut on hit distance as cut on helix distance",
+			     _useHelixDistCut,
+			     bool(false));
+
 //   std::vector<float> dVertCut;
 //   dVertCut.push_back(0.2);
 //   dVertCut.push_back(1.0);
@@ -218,11 +228,11 @@ void LLPFinder::processEvent( LCEvent * evt ) {
           secondTrackState=fixTrackStateDirection(secondTrackLHTS,secondTrackFHTS);
         }
 
-  float d01 = firstTrackState.getD0();
-  float z01 = firstTrackState.getZ0();
-  float phi1 = firstTrackState.getPhi();
-  float tanLambda1 = firstTrackState.getTanLambda();
-  float omega1 = firstTrackState.getOmega();
+  float d01 = firstTrack->getD0();
+  float z01 = firstTrack->getZ0();
+  float phi1 = firstTrack->getPhi();
+  float tanLambda1 = firstTrack->getTanLambda();
+  float omega1 = firstTrack->getOmega();
   HelixClass firstHelix;
   firstHelix.Initialize_Canonical(phi1,d01,z01,omega1,tanLambda1,_bField);
   float charge1 = firstHelix.getCharge();
@@ -231,17 +241,17 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 
 	float r2 = secondTrack->getRadiusOfInnermostHit();
 
-	float d02 = secondTrackState.getD0();
-	float z02 = secondTrackState.getZ0();
-	float phi2 = secondTrackState.getPhi();
-	float tanLambda2 = secondTrackState.getTanLambda();
-	float omega2 = secondTrackState.getOmega();
+	float d02 = secondTrack->getD0();
+	float z02 = secondTrack->getZ0();
+	float phi2 = secondTrack->getPhi();
+	float tanLambda2 = secondTrack->getTanLambda();
+	float omega2 = secondTrack->getOmega();
 	HelixClass secondHelix;
 	secondHelix.Initialize_Canonical(phi2,d02,z02,omega2,tanLambda2,_bField);
 	float charge2 = secondHelix.getCharge();
 	float prodCharge = charge1*charge2;
-	if (prodCharge<0) { // two tracks with opposite charges
-	//if (1) { // FIXME requirement for opposite charges nontrivial for LLPs
+	//if (prodCharge<0) { // two tracks with opposite charges
+	if (1) { // FIXME requirement for opposite charges nontrivial for LLPs
 
 	  float px1 = firstHelix.getMomentum()[0];
 	  float py1 = firstHelix.getMomentum()[1];
@@ -255,20 +265,50 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	  float pp2 = sqrt(px2*px2+py2*py2+pz2*pz2);
 	  float pt2 = sqrt(px2*px2+py2*py2);
 
-	  float distV0;
+    float distLLP;
+    float distLLP1;
+    float distLLP2;
 	  float distHits;
-	  float momentum[3];
-	  float vertex[3];
+    float momentum[3];
+    float momentum1[3];
+    float momentum2[3];
+    float vertex[3];
+    float vertex1[3];
+    float vertex2[3];
 	  float llp_vtx[3];
 
+    /*
     if (pp1>pp2) {
     //if (pt1>pt2) {
-	    distV0 = firstHelix.getDistanceToHelix(&secondHelix, vertex, momentum);
+	    distLLP = firstHelix.getDistanceToHelix(&secondHelix, vertex, momentum);
 
 	  }
 	  else {
-	    distV0 = secondHelix.getDistanceToHelix(&firstHelix, vertex, momentum);
+	    distLLP = secondHelix.getDistanceToHelix(&firstHelix, vertex, momentum);
 	  }
+    */
+
+	  distLLP1 = firstHelix.getDistanceToHelix(&secondHelix, vertex1, momentum1);
+	  distLLP2 = secondHelix.getDistanceToHelix(&firstHelix, vertex2, momentum2);
+
+    if (distLLP1 < distLLP2) {
+      distLLP = distLLP1;
+      vertex[0] = vertex1[0];
+      vertex[1] = vertex1[1];
+      vertex[2] = vertex1[2];
+      momentum[0] = momentum1[0];
+      momentum[1] = momentum1[1];
+      momentum[2] = momentum1[2];
+    }
+    else {
+      distLLP = distLLP2;
+      vertex[0] = vertex2[0];
+      vertex[1] = vertex2[1];
+      vertex[2] = vertex2[2];
+      momentum[0] = momentum2[0];
+      momentum[1] = momentum2[1];
+      momentum[2] = momentum2[2];
+    }
 
 	  if (pt1>pt2) {
 	    if(minDistIndex==0 || minDistIndex==1) {for(int idx=0;idx<3;idx++) llp_vtx[idx] = ftFirstHitLoc[idx];}
@@ -279,8 +319,14 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	    else {for(int idx=0;idx<3;idx++) llp_vtx[idx] = stLastHitLoc[idx];}
 	  }
 
-	  float radV0 = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
-	  float radLLP = sqrt(llp_vtx[0]*llp_vtx[0]+llp_vtx[1]*llp_vtx[1]);
+    if (!_useHelixDist) {
+      vertex[0] = llp_vtx[0];
+      vertex[1] = llp_vtx[1];
+      vertex[2] = llp_vtx[2];
+      //distLLP = minDist;
+    }
+
+	  float radLLP = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
 
     streamlog_out( DEBUG0 ) << " ***************** the vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
               << " with Ref. Point t1 : " << dd4hep::rec::Vector3D( (const float*) firstTrackState.getReferencePoint() )
@@ -296,23 +342,27 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 
 	  // check to ensure there are no hits on tracks at radii significantly smaller than reconstructed vertex
 	  // TO DO: should be done more precisely using helices
-	  //if(r1/radV0<_minTrackHitRatio)continue;
-	  //if(r2/radV0<_minTrackHitRatio)continue;
+	  //if(r1/radLLP<_minTrackHitRatio)continue;
+	  //if(r2/radLLP<_minTrackHitRatio)continue;
 
 	 //streamlog_out( DEBUG0 ) << "                       V0 : " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
 
-	  //	  if (distV0 < _dVertCut && radV0 > _rVertCut ) { // cut on vertex radius and track misdistance
-	  if (radV0 > _rVertCut  ) {
+	  //	  if (distLLP < _dVertCut && radLLP > _rVertCut ) { // cut on vertex radius and track misdistance
+	  if (1) {
 
 	    //streamlog_out( DEBUG0 ) << " ***************** found vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
 		//		    << " t1 " << lcshort( firstTrack ) << "\n"
 		//		    << " t2 " << lcshort( secondTrack )
-		///	    << " distV0 " << distV0
+		///	    << " distLLP " << distLLP
 		//		    << std::endl ;
 
-    //if( distV0 < _dVertCut ) { // cut on vertex radius and track misdistance
-    if( minDist < _rHitCut ) { // cut distance between first/last hits
+    bool distCut = minDist < _rHitCut;
+    if (_useHelixDistCut) distCut = distLLP < _rHitCut;
 
+    //if( distLLP < _dVertCut ) { // cut on vertex radius and track misdistance
+    if( distCut ) { // cut on distance between first/last hits (or between helices)
+
+      if (!_useHelixDist) distLLP = minDist;
 
 	    streamlog_out( DEBUG0 ) << "  ***** testing various hypotheses " << std::endl ;
 
@@ -356,10 +406,10 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	    float deltaL0 = fabs(massL0 - MASSLambda0);
 	    float deltaGm = fabs(massGamma - MASSGamma);
 	    float deltaL0bar = fabs(massL0bar - MASSLambda0);
-	    if(radV0<_rxyCutGamma )deltaGm    = 100000.;
-	    if(radV0<_rxyCutK0S   )deltaK0    = 100000.;
-	    if(radV0<_rxyCutLambda)deltaL0    = 100000.;
-	    if(radV0<_rxyCutLambda)deltaL0bar = 100000.;
+	    if(radLLP<_rxyCutGamma )deltaGm    = 100000.;
+	    if(radLLP<_rxyCutK0S   )deltaK0    = 100000.;
+	    if(radLLP<_rxyCutLambda)deltaL0    = 100000.;
+	    if(radLLP<_rxyCutLambda)deltaL0bar = 100000.;
 
 	    int code = 22;
 	    bool massCondition = false;
@@ -388,20 +438,20 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 	    // if (massCondition) {
 	    //if (true) { // always save for now
 	      bool ok = true;
-	      if(r1/radV0<_minTrackHitRatio|| r2/radV0<_minTrackHitRatio){
+	      if(r1/radLLP<_minTrackHitRatio|| r2/radLLP<_minTrackHitRatio){
 		r1 = this->Rmin(firstTrack);
 		r2 = this->Rmin(secondTrack);
-		if(r1/radV0<_minTrackHitRatio || r2/radV0<_minTrackHitRatio)ok = false;
-		//streamlog_out( DEBUG0 ) << " V0X: " << ok << " r = " << radV0 << " r1 = " << r1 << " r2 = " << r2 << std::endl;
+		if(r1/radLLP<_minTrackHitRatio || r2/radLLP<_minTrackHitRatio)ok = false;
+		//streamlog_out( DEBUG0 ) << " V0X: " << ok << " r = " << radLLP << " r1 = " << r1 << " r2 = " << r2 << std::endl;
 	      }
 	      //if(!ok)continue;
 	      TrackPair * trkPair = new TrackPair();
 	      trkPair->setFirstTrack( firstTrack );
 	      trkPair->setSecondTrack( secondTrack );
-        //trkPair->setDistance( distV0 );
-        trkPair->setDistance( minDist );
-        //trkPair->setVertex( vertex );
-        trkPair->setVertex( llp_vtx );
+        trkPair->setDistance( distLLP );
+        //trkPair->setDistance( minDist );
+        trkPair->setVertex( vertex );
+        //trkPair->setVertex( llp_vtx );
 	      trkPair->setMomentum( momentum );
 	      trkPair->setCode( code );
 	      trkPairs.push_back( trkPair );

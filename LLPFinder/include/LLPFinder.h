@@ -92,6 +92,9 @@ class LLPFinder : public Processor {
 
   float _rHitCut{};
 
+  bool _useHelixDist{};
+  bool _useHelixDistCut{};
+
   float _bField{};
 
   float MASSProton{};
