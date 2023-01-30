@@ -1,0 +1,7 @@
+# constants
+
+NBINS = 30
+TPC_R_MAX = 1974.
+TPC_Z_MAX = 2350.
+# TPC_R_MAX = 100.
+# TPC_Z_MAX = 200.
