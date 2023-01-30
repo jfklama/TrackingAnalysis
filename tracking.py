@@ -2,7 +2,8 @@ import math
 from pyLCIO import IOIMPL, EVENT, IMPL, ROOT, IOException 
 import utils
 
-def analyse_tracks(mcCollection, trackMCLinkCollection, \
+# def analyse_tracks(mcCollection, trackMCLinkCollection, \
+def analyse_tracks(mcCollection, trackCollection, \
                 llp_pdg, pdg1, pdg2, gen_status_llp, gen_status, \
                 track_col, fill_hists, counter, histograms, cat):
     vMatchingTracks = []
@@ -48,9 +49,10 @@ def analyse_tracks(mcCollection, trackMCLinkCollection, \
 
 		cut = True
 
-		for trackRel in trackMCLinkCollection:
+		# for trackRel in trackMCLinkCollection:
+		for track in trackCollection:
 
-			track = trackRel.getFrom()
+			# track = trackRel.getFrom()
 
 			ts_FirstHit = track.getTrackState(2) # 1 = atIP, 2 = atFirstHit, 3 = atLastHit
 			ts_FirstHit = utils.fixTrackStateDirection( track, ts_FirstHit.getLocation() )
@@ -87,8 +89,9 @@ def analyse_tracks(mcCollection, trackMCLinkCollection, \
 
 			vMatchingTracks.append( (trackState, ang_dist) )
 
-			if trackRel.getTo() == particle \
-			and trackRel.getTo().getCharge() * utils.getTrackCharge(trackState) > 0 \
+			# if trackRel.getTo() == particle \
+			# and trackRel.getTo().getCharge() * utils.getTrackCharge(trackState) > 0 \
+			if particle.getCharge() * utils.getTrackCharge(trackState) > 0 \
 			and ang_dist < 0.2:
 			#and vtx_dist < 100.:
 

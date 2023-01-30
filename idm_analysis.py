@@ -28,14 +28,21 @@ def process_event(event,counter, histograms):
 
 	iEvt = event.getEventNumber()
 
-	mcCollection = event.getCollection('MCParticlesSkimmed')
+	mcCollection = event.getCollection('MCParticle')
 	#tpcCollection = event.getCollection('TPCCollection')
-	trackCollection = event.getCollection('MarlinTrkTracks')
-	trackToMCLinkCollection = event.getCollection('MarlinTrkTracksMCTruthLink')
-	refitTrackCollection = event.getCollection('RefittedMarlinTrkTracks')
-	refitTrackToMCLinkCollection = event.getCollection('RefittedMarlinTrkTracksMCTruthLink')
+	if cat.find('Silicon') == -1:
+		trackCollection = event.getCollection('MarlinTrkTracks')
+		trackToMCLinkCollection = event.getCollection('MarlinTrkTracksMCTruthLink')
+		refitTrackCollection = event.getCollection('RefittedMarlinTrkTracks')
+		refitTrackToMCLinkCollection = event.getCollection('RefittedMarlinTrkTracksMCTruthLink')
+		# TPCHitRelations = event.getCollection('TPCTrackerHitRelations')
+
+	else:
+		trackCollection = event.getCollection('SiTracks')
+		refitTrackCollection = event.getCollection('SiTracks_Refitted')
+		trackToMCLinkCollection = event.getCollection('SiTracksMCTruthLink')
+		refitTrackToMCLinkCollection = event.getCollection('SiTracksMCTruthLink')
 	pfoCollection = event.getCollection('PandoraPFOs')
-	TPCHitRelations = event.getCollection('TPCTrackerHitRelations')
 
 	nVTX = 0
 	if 'LLPVertices' in event.getCollectionNames():
@@ -54,9 +61,9 @@ def process_event(event,counter, histograms):
 	if iEvt%100==0:
 			print (iEvt, str(trackCollection.getNumberOfElements() ) + ' tracks in event')
 
-	
-	# _nPFOs += pfoCollection.getNumberOfElements()
-	counter.increment("_nPFOs", True, int(pfoCollection.getNumberOfElements()))
+	if int(pfoCollection.getNumberOfElements()) > 0:
+		# _nPFOs += pfoCollection.getNumberOfElements()
+		counter.increment("_nPFOs", True, int(pfoCollection.getNumberOfElements()))
 
 	#check if LLP decayed within tracking acceptance and we have 2 truth tracks
 	trueR = 0
@@ -242,7 +249,7 @@ def process_event(event,counter, histograms):
 	############### MARLINTRK ###############
 	#########################################
 
-	tracking.analyse_tracks(mcCollection, trackToMCLinkCollection, \
+	tracking.analyse_tracks(mcCollection, trackCollection, \
 			llp_pdg, pdg1, pdg2, gen_status_llp, gen_status, \
 				"MarlinTrk", useTracks == "MarlinTrk", counter, histograms, cat)
 	
@@ -250,7 +257,7 @@ def process_event(event,counter, histograms):
 	############### REFITTED ################
 	#########################################
 
-	tracking.analyse_tracks(mcCollection, refitTrackToMCLinkCollection, \
+	tracking.analyse_tracks(mcCollection, refitTrackCollection, \
 			llp_pdg, pdg1, pdg2, gen_status_llp, gen_status, \
 				"Refitted", useTracks == "Refitted", counter, histograms, cat)
 
@@ -269,22 +276,24 @@ def process_event(event,counter, histograms):
 	#########################################
 	################## PFOs #################
 	#########################################
-
-	for particle in pfoCollection:
-		pid = particle.getParticleIDs()[0].getPDG()
-		# if abs(pid) == pdg1 or abs(pid) == pdg2:
-		# 	_nCorrPID+=1
-		counter.increment("_nCorrPID", abs(pid) == pdg1 or abs(pid) == pdg2, 1)
-	# 	print iEvt,
-	# 	for id in particle.getParticleIDs():
-	# 		print id.getPDG(),
-	# 	print ''
-	# 	for id in particle.getParticleIDs():
-	# 		print id.getAlgorithmType(),
-	# 	print ''
-	# 	print iEvt, particle.getParticleIDUsed()
-	# 	print iEvt, particle.getGoodnessOfPID()
-	# print ''
+	
+	if int(pfoCollection.getNumberOfElements()) > 0:
+		for particle in pfoCollection:
+			if particle.getParticleIDs().size() > 0:
+				pid = particle.getParticleIDs()[0].getPDG()
+				# if abs(pid) == pdg1 or abs(pid) == pdg2:
+				# 	_nCorrPID+=1
+				counter.increment("_nCorrPID", abs(pid) == pdg1 or abs(pid) == pdg2, 1)
+			# 	print iEvt,
+			# 	for id in particle.getParticleIDs():
+			# 		print id.getPDG(),
+			# 	print ''
+			# 	for id in particle.getParticleIDs():
+			# 		print id.getAlgorithmType(),
+			# 	print ''
+			# 	print iEvt, particle.getParticleIDUsed()
+			# 	print iEvt, particle.getGoodnessOfPID()
+			# print ''
 
 def print_output(counter, histograms):
 
@@ -316,10 +325,11 @@ def print_output(counter, histograms):
 	print('Fake vertices:  ', counter._nFakeVertices)
 	if counter._nWithinAcceptance > 0:
 		print('Vtx finding eff.:  ', float(counter._nMatchingVertices) / (float(counter._nWithinAcceptance)/2))
-		print('Vtx finding purity:  ', float(counter._nMatchingVertices) / float(counter._nSecVertices))
-		print('* Eff. (inside TPC):  ', float(counter._matchingVerticesTPC) / (float(counter._nWithinTPC)/2))
-		print('* Purity (inside TPC):  ', float(counter._matchingVerticesTPC) / float(counter._nSecVerticesTPC))
-		print('Eff. inside TPC after pT, Ndf cuts: ', float(centresRefDistsVsPtEv) / (float(counter._nWithinTPC)/2))
+		if counter._nSecVertices > 0:
+			print('Vtx finding purity:  ', float(counter._nMatchingVertices) / float(counter._nSecVertices))
+			print('* Eff. (inside TPC):  ', float(counter._matchingVerticesTPC) / (float(counter._nWithinTPC)/2))
+			print('* Purity (inside TPC):  ', float(counter._matchingVerticesTPC) / float(counter._nSecVerticesTPC))
+			print('Eff. inside TPC after pT, Ndf cuts: ', float(centresRefDistsVsPtEv) / (float(counter._nWithinTPC)/2))
 	print('')
 
 def save_to_file(histo_array):
@@ -381,6 +391,8 @@ if __name__ == '__main__':
 	if infileName.find("sm") != -1:
 		cat = 'sm'
 		llp_pdg = 0
+	if infileName.find("Silicon") != -1:
+		cat = 'SiliconTracker/'+cat
 
 	print("LLP: " + str(llp_pdg) + ", with final state: " + str(pdg1) + ", " + str(pdg2))
 
