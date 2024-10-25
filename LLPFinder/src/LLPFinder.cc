@@ -54,9 +54,19 @@ LLPFinder::LLPFinder() : Processor("LLPFinder") {
 			    std::string("VertexTracksLink") );
 
   registerProcessorParameter("CutOnHelixDistance",
-			     "Cut on maximum closest distance between first/last hit of two tracks",
+			     "Cut on maximum closest distance between PCA of two helices",
 			     _rHelixCut,
 			     float(100.0));
+
+  registerProcessorParameter("MinimumRadius",
+			     "Minimum allowed radius of a vtx candidate",
+			     _rMin,
+			     float(400.0));
+
+  registerProcessorParameter("MaximumRadius",
+			     "Maximum allowed radius of a vtx candidate",
+			     _rMax,
+			     float(1770.0));
 
   registerProcessorParameter("UseHelixDistance",
 			     "Use helix distance method to find vertex",
@@ -179,6 +189,10 @@ void LLPFinder::processEvent( LCEvent * evt ) {
     for (int i=0;i<nelem-1;++i) {
       Track * firstTrack = dynamic_cast<Track*>(col->getElementAt(i));
 
+      HelixClass firstHelix_IP;
+      firstHelix_IP.Initialize_Canonical(firstTrack->getPhi(),firstTrack->getD0(),firstTrack->getZ0(),
+                                         firstTrack->getOmega(),firstTrack->getTanLambda(),_bField);
+
       TrackState *firstTrackFHTS = (TrackState*) firstTrack->getTrackState(lcio::TrackState::AtFirstHit);
       TrackState *firstTrackLHTS = (TrackState*) firstTrack->getTrackState(lcio::TrackState::AtLastHit);
 
@@ -191,6 +205,10 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 
       for (int j=i+1;j<nelem;++j) {
 	      Track * secondTrack = dynamic_cast<Track*>(col->getElementAt(j));
+
+        HelixClass secondHelix_IP;
+        secondHelix_IP.Initialize_Canonical(secondTrack->getPhi(),secondTrack->getD0(),secondTrack->getZ0(),
+                                           secondTrack->getOmega(),secondTrack->getTanLambda(),_bField);
 
 	      streamlog_out( DEBUG0 ) << " ***************** candidate tracks : "
 				    << " t" << i << " " << lcshort( firstTrack ) << "\n"
@@ -328,6 +346,16 @@ void LLPFinder::processEvent( LCEvent * evt ) {
         distLLP1 = firstHelix.getDistanceToHelix(&secondHelix, vertex1, momentum1);
         distLLP2 = secondHelix.getDistanceToHelix(&firstHelix, vertex2, momentum2);
 
+        // for tracks with small d0 at IP (higher boost)
+        // better to use track states at IP for vtx finding 
+        // bool smallD0atIP = fabs(firstTrack->getD0()) < 100 || fabs(secondTrack->getD0()) < 100;
+        bool smallD0atIP = fabs(firstTrack->getD0()) < 100 && fabs(secondTrack->getD0()) < 100;
+        if (smallD0atIP) {
+          // make max d0 parameter ? 
+          distLLP1 = firstHelix_IP.getDistanceToHelix(&secondHelix_IP, vertex1, momentum1);
+          distLLP2 = secondHelix_IP.getDistanceToHelix(&firstHelix_IP, vertex2, momentum2);
+        }
+
         float px1 = firstHelix.getMomentum()[0];
       	float py1 = firstHelix.getMomentum()[1];
       	float pz1 = firstHelix.getMomentum()[2];
@@ -355,6 +383,14 @@ void LLPFinder::processEvent( LCEvent * evt ) {
           momentum[0] = momentum2[0];
           momentum[1] = momentum2[1];
           momentum[2] = momentum2[2];
+        }
+
+        if(smallD0atIP) {
+          // if using helices pointing to IP
+          // check to ensure there are no hits on tracks at radii significantly smaller than reconstructed vertex
+          float radVtx = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
+          if(r1/radVtx<0.9)continue;
+          if(r2/radVtx<0.9)continue;
         }
 
         // check if TS first hits are indeed closer to vertex than last hits
@@ -390,6 +426,7 @@ void LLPFinder::processEvent( LCEvent * evt ) {
           pz2 = secondHelix.getMomentum()[2];
           pp2 = sqrt(px2*px2+py2*py2+pz2*pz2);
         }
+
 
       	
       	float pt1 = sqrt(px1*px1+py1*py1);
@@ -443,6 +480,10 @@ void LLPFinder::processEvent( LCEvent * evt ) {
            secondNdf = Ndf1;
          }
 
+        float radLLP = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
+
+        if (radLLP < _rMin || radLLP > _rMax) continue;
+
         // calculate variables for cuts
         float ptAtVtx = std::hypot( (px1+px2),(py1+py2) );
         float thetaAtVtx = atan2(ptAtVtx,(pz1+pz2));
@@ -470,10 +511,10 @@ void LLPFinder::processEvent( LCEvent * evt ) {
         bool cutPhi1, cutPhi2;
         if (charge1 < 0) {
           cutPhi1 = charge1 * phiRef1 / arc1 < -_refToArcPhiCut;
-          cutPhi2 = charge2 * ( 2 * M_PI - phiRef2 ) / arc2 > _refToArcPhiCut;
+          cutPhi2 = charge2 * ( 2 * M_PI - phiRef2 ) / arc2  >  _refToArcPhiCut;
         }
         else {
-          cutPhi1 = charge1 * ( 2 * M_PI - phiRef1 ) / arc1 > _refToArcPhiCut;
+          cutPhi1 = charge1 * ( 2 * M_PI - phiRef1 ) / arc1  >  _refToArcPhiCut;
           cutPhi2 = charge2 * phiRef2 / arc2 < -_refToArcPhiCut;
         }
 
@@ -502,14 +543,14 @@ void LLPFinder::processEvent( LCEvent * evt ) {
           vertex[0] = llp_vtx[0]; vertex[1] = llp_vtx[1]; vertex[2] = llp_vtx[2];
         }
 
-        // float radLLP = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]+vertex[2]*vertex[2]);
-        float radLLP = sqrt(vertex[0]*vertex[0]+vertex[1]*vertex[1]);
 
         streamlog_out( DEBUG0 ) << " ***************** the vertex for tracks : " << dd4hep::rec::Vector3D( (const float*) vertex ) << "\n"
                   << " with helix1 ref. point : " << dd4hep::rec::Vector3D( (const float*) firstHelix.getReferencePoint() )
                   << " and helix2 ref. point : " << dd4hep::rec::Vector3D( (const float*) secondHelix.getReferencePoint() ) << "\n"
                   << " with helix1 momentum : " << dd4hep::rec::Vector3D( (const float*) firstHelix.getMomentum() )
                   << " and helix2 momentum : " << dd4hep::rec::Vector3D( (const float*) secondHelix.getMomentum() ) << "\n"
+                  << " from vertex1 : " << dd4hep::rec::Vector3D( (const float*) vertex1 )
+                  << " and vertex2 : " << dd4hep::rec::Vector3D( (const float*) vertex2 ) << "\n"
                 << " t1 phi " << firstTrackState.getPhi() << "\n"
                 << " t2 phi " << secondTrackState.getPhi() << "\n"
                 << " distLLP " << distLLP << "\n"
@@ -530,11 +571,20 @@ void LLPFinder::processEvent( LCEvent * evt ) {
 
           streamlog_out( DEBUG7 ) << " ### Passed cut on distance between helices: " << distLLP << " < " << _rHelixCut << std::endl;
 
+          if (minDist > _refPointDistCut) {
+            streamlog_out( DEBUG7 ) << " Cutting on max distance between reference points" << std::endl;
+            continue;
+          }
+
           // reject tracks that are just randomly intersecting
-          if ((refpoint_lhZ1 > _minLenToCutOnZ && cutZ1) || (refpoint_lhZ2 > _minLenToCutOnZ && cutZ2))
+          if ((refpoint_lhZ1 > _minLenToCutOnZ && cutZ1) || (refpoint_lhZ2 > _minLenToCutOnZ && cutZ2)) {
+            streamlog_out( DEBUG7 ) << " Cutting on Z... cutZ1: " << cutZ1 << ", cutZ2:  " << cutZ2 << std::endl;
             continue;
-          if ((refpoint_lhZ1 < _minLenToCutOnZ && cutPhi1) || (refpoint_lhZ2 < _minLenToCutOnZ && cutPhi2))
+          }
+          if ((refpoint_lhZ1 < _minLenToCutOnZ && cutPhi1) || (refpoint_lhZ2 < _minLenToCutOnZ && cutPhi2)) {
+            streamlog_out( DEBUG7 ) << " Cutting on Phi... cutPhi1: " << cutPhi1 << ", cutPhi2:  " << cutPhi2 << std::endl;
             continue;
+          }
 
           streamlog_out( DEBUG7 ) << " ### Passed cut on random intersections... " << std::endl;
 

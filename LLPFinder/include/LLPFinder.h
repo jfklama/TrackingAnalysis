@@ -96,6 +96,8 @@ class LLPFinder : public Processor {
   //std::string _recoPartColName{};
 
   float _rHelixCut{};
+  float _rMin{};
+  float _rMax{};
 
   bool  _useHelixDist{};
   bool  _useHelixDistCut{};
