@@ -8,6 +8,7 @@
 #include "TrackPair.h"
 #include "IMPL/TrackStateImpl.h"
 
+#include "HelixClass.h"
 
 using namespace lcio ;
 using namespace marlin ;
@@ -75,23 +76,46 @@ class LLPFinder : public Processor {
 
   void Sorting( TrackPairVec & trkPairVec );
   float Rmin( Track* track );
+  float getDistance( const float *p1, const float *p2 );
   std::vector<float> getHitDists( Track* firstTrack, Track* secondTrack );
   TrackStateImpl flipTrackState( TrackState *ts );
   TrackStateImpl fixTrackStateDirection( TrackState* ts, TrackState* other_ts );
+  HelixClass getHelix(Track* tr);
+  HelixClass getHelix(TrackStateImpl ts);
+  TrackStateImpl getOtherTrackState(Track *trk, TrackStateImpl ts);
+  float getPhiOnHelix(const float *vertex, float xC, float yC);
+  float getArcLength(float phi1, float phi2, int q);
+  float rotateAngle(float angle, float rotation);
 
   int _nRun{};
   int _nEvt{};
 
   std::string _trackColName{};
   std::string _vertexColName{};
+  std::string _vertexTracksLinkName{};
   //std::string _recoPartColName{};
 
-  float _rHitCut{};
+  float _rHelixCut{};
+  float _rMin{};
+  float _rMax{};
 
-  bool _useHelixDist{};
-  bool _useHelixDistCut{};
+  bool  _useHelixDist{};
+  bool  _useHelixDistCut{};
+  float _curvatureRatioCut{};
+  float _cosOpeningAngleCut{};
+  float _refPointDistCut{};
+  float _vtxPtCut{};
+  int   _trkNdfCut{};
+  float _leadingTrackPtCut{};
+  float _secondTrackPtCut{};
+  float _shortTrackPtCut{};
+  int   _shortTrackNdfCut{};
+  float _minLenToCutOnZ{};
+  float _refToArcPhiCut{};
+  float _refToLenZCut{};
+  float _refPointsCirclesDistCut{};
 
-  float _bField{};
+  double _bField{};
 
 
 } ;

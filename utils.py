@@ -28,15 +28,15 @@ def logx(nbins, max):
 	l10 = math.log(10)
 	for i in range(nbins-1):
 		xbins[i] = math.exp(l10*i*dx)
-		print xbins[i]
+		print(xbins[i])
 	return xbins
 
 def getTrackMomentum(track):
 
 	momentum = [0.,0.,0.]
 
-  	#d0 = track.getD0();
-	#z0 = track.getZ0();
+  	#d0 = track.getD0()
+	#z0 = track.getZ0()
 	phi = track.getPhi()
 	tanLambda = track.getTanLambda()
 	omega = track.getOmega()
@@ -77,14 +77,20 @@ def getArcLength(phi1, phi2, q):
 
 def angularDistance(theta1, theta2, phi1, phi2):
 
+	# dPhi = phi1 - phi2
+	# if abs(dPhi) > math.pi:
+	# 	dPhi = 2 * math.pi - abs(dPhi)
+	# '''
+	# theta1 -= math.pi / 2
+	# theta2 -= math.pi / 2
+	# phi1   += math.pi
+	# '''
+
 	dPhi = phi1 - phi2
-	if abs(dPhi) > math.pi:
-		dPhi = 2 * math.pi - abs(dPhi)
-	'''
-	theta1 -= math.pi / 2
-	theta2 -= math.pi / 2
-	phi1   += math.pi
-	'''
+	if dPhi > math.pi:
+		dPhi -= 2 * math.pi
+	elif dPhi < -math.pi:
+		dPhi += 2 * math.pi
 
 	dist = math.sqrt( (theta1-theta2)**2 * (math.sin((theta1+theta2)/2))**2 + (dPhi)**2 )
 	#dist = math.acos( \
@@ -163,18 +169,18 @@ def getAnyTrackState(track, myHit, loc):
 	hits = track.getTrackerHits()
 	ts = track.getTrackState(2)
 	if (not ts):
-		print 'ERROR: No TrackState in First Hit!'
+		print('ERROR: No TrackState in First Hit!')
 		return
 
 	myTrackState = IMPL.TrackStateImpl()
 
 	for i in range(len(hits)-1):
 
-		x0 = hit[i+1].getPosition()[0]
-		y0 = hit[i+1].getPosition()[1]
-		z0 = hit[i+1].getPosition()[2]
+		x0 = hits[i+1].getPosition()[0]
+		y0 = hits[i+1].getPosition()[1]
+		z0 = hits[i+1].getPosition()[2]
 
-		ts = getNextTrackState(ts,hit[i+1],loc)
+		ts = getNextTrackState(ts,hits[i+1],loc)
 		#if hit[i+1]==myHit:
 
 def fixTrackStateDirection(track,loc):
@@ -197,7 +203,7 @@ def fixTrackStateDirection(track,loc):
 	elif direction * getTrackMomentum(init_ts)[2] < 0:
 		fixed_ts = flipTrackState(init_ts)
 	else:
-		print 'ERROR: dir * p_z = ' + str(direction * init_ts.getMomentum()[2])
+		print('ERROR: dir * p_z = ' + str(direction * init_ts.getMomentum()[2]))
 		return
 
 	return fixed_ts
@@ -265,7 +271,7 @@ def findClosestTrackState(track,vtx_mc):
 
 	return trackState
 
-def findClosestLegalTrackStates(trk1, trk2):
+def findClosestLegalTrackStates(trk1, trk2, vtx):
 
 	trkStates = []
 	trkStates.append( fixTrackStateDirection(trk1,2) )
@@ -290,8 +296,25 @@ def findClosestLegalTrackStates(trk1, trk2):
 				minDist = dist
 				goodTS1 = trkStates[iTS]
 				goodTS2 = trkStates[jTS]
-	# print 'minDist: ', minDist
-	# print ''
+	# print ('minDist: ', minDist)
+	# print ('')
+
+	# check if these trackStates are closer to vtx than last states
+	lhTSs = [ts for ts in trkStates if ts not in [goodTS1,goodTS2]]
+
+	fh_dists = spacialDistance(goodTS1.getReferencePoint(),vtx.getPosition()) \
+			 + spacialDistance(goodTS2.getReferencePoint(),vtx.getPosition())
+	lh_dists = spacialDistance(lhTSs[0].getReferencePoint(),vtx.getPosition()) \
+			 + spacialDistance(lhTSs[1].getReferencePoint(),vtx.getPosition())
+	
+	# print(goodTS1.getReferencePoint()[0],goodTS1.getReferencePoint()[1],goodTS1.getReferencePoint()[2])
+	# print(goodTS2.getReferencePoint()[0],goodTS2.getReferencePoint()[1],goodTS2.getReferencePoint()[2])
+
+	if lh_dists < fh_dists:
+		# print('lh_dists =', lh_dists, '<', fh_dists, ' = fh_dists')
+		# print(len(lhTSs))
+		goodTS1 = lhTSs[0]
+		goodTS2 = lhTSs[1]
 
 	return goodTS1, goodTS2
 
@@ -312,8 +335,103 @@ def getHelixXYC(trackState):
 
 	return xCentre, yCentre
 
+def getDistanceToPoint(trackState, xPoint, Distance):
+
+	# rewritten in python from HelixClass in MarlinUtil
+
+	referencePoint = trackState.getReferencePoint()
+	xCentre, yCentre = getHelixXYC(trackState)
+	momentum = getTrackMomentum(trackState)
+	pxy = math.sqrt(momentum[0]**2 + momentum[1]**2)
+	tanLambda = trackState.getTanLambda()
+	omega = trackState.getOmega()
+	radius = 1./abs(omega)
+	charge = omega/abs(omega)
+
+	phi = math.atan2(xPoint[1]-yCentre,xPoint[0]-xCentre)
+	phi0 = math.atan2(referencePoint[1]-yCentre,referencePoint[0]-xCentre)
+	# calculate distance to XYprojected centre of Helix, comparing this with distance to radius around centre gives DistXY
+	DistXY = (xCentre-xPoint[0])*(xCentre-xPoint[0]) + (yCentre-xPoint[1])*(yCentre-xPoint[1])
+	DistXY = math.sqrt(DistXY)
+	DistXY = math.fabs(DistXY - radius)
+
+	nCircles = 0
+
+	if (math.fabs(tanLambda*radius)>1.0e-20):
+		
+		xCircles = phi0 - phi -charge*(xPoint[2]-referencePoint[2])/(tanLambda*radius)
+		xCircles = xCircles/(2*math.pi)
+		n1 = 0
+		n2 = 0
+
+		if (xCircles >= 0.):
+			n1 = int(xCircles)
+			n2 = n1 + 1
+	
+		else:
+			n1 = int(xCircles) - 1
+			n2 = n1 + 1
+	
+
+		if (math.fabs(n1-xCircles) < math.fabs(n2-xCircles)):
+			nCircles = n1
+	
+		else:
+			nCircles = n2
+	
+
+	DPhi = (2*math.pi)*(float(nCircles)) + phi - phi0
+
+	zOnHelix = referencePoint[2] - charge*radius*tanLambda*DPhi
+
+	DistZ = math.fabs(zOnHelix - xPoint[2])
+	Time = 0
+
+	if (math.fabs(momentum[2]) > 1.0e-20):
+		Time = (zOnHelix - referencePoint[2])/momentum[2]
+	
+	else:
+		Time = charge*radius*DPhi/pxy
+	
+
+	Distance.append(DistXY)
+	Distance.append(DistZ)
+	Distance.append(math.sqrt(DistXY*DistXY+DistZ*DistZ))
+
+	return Time
+
+
 def rotateAngle(angle, rotation):
 	rotAngle = angle + rotation
 	if rotAngle < 0:
 		rotAngle += 2*math.pi
 	return rotAngle
+
+def get_2d_eff_plot(h_reco, h_true):
+	effhist = h_reco.Clone("effhist")
+	effhist.Divide(h_true)
+	for k in range(effhist.GetNbinsX()):
+		for l in range(effhist.GetNbinsY()):
+			binnum = effhist.GetBin(k+1, l+1)
+			nchit = h_reco.GetBinContent(binnum)
+			nc = h_true.GetBinContent(binnum)
+			if nchit == 0 and nc != 0:
+				effhist.SetBinContent(binnum, 1e-6)  # small number instead of 0
+
+	return effhist
+
+def get_inv_mass(mom1, mass1, mom2, mass2):
+
+	e1 = math.sqrt(mom1[0]**2 + mom1[1]**2 + mom1[2]**2 + mass1**2)
+	e2 = math.sqrt(mom2[0]**2 + mom2[1]**2 + mom2[2]**2 + mass2**2)
+
+	particle1 = ROOT.TLorentzVector()
+	particle2 = ROOT.TLorentzVector()
+
+	particle1.SetPxPyPzE(mom1[0],mom1[1],mom1[2],e1)
+	particle2.SetPxPyPzE(mom2[0],mom2[1],mom2[2],e2)
+
+	M_inv = (particle1+particle2).M()
+
+	return M_inv
+	

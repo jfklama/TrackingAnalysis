@@ -16,22 +16,19 @@ from array import array
 # --- LCIO dependencies ---
 from pyLCIO import UTIL, EVENT, IMPL, IO, IOIMPL
 
-def pos_or_neg():
-    return 1 if random.random() < 0.5 else -1
-
 #---- number of events per momentum bin -----
 nevt = 1000
 
-outfile = "data/mc_electrons.slcio"
+outfile = "data/pixelTPC/SingleMuons/mu_test_simulation1_6_PixelTracker55_p0.8_t10_1ev_GEN.slcio"
 
 #--------------------------------------------
 
 
 wrt = IOIMPL.LCFactory.getInstance().createLCWriter( )
 
-wrt.open( outfile , EVENT.LCIO.WRITE_NEW )
+wrt.open( outfile , EVENT.LCIO.WRITE_NEW ) 
 
-print " opened outfile: " , outfile
+print( " opened outfile: " , outfile)
 
 random.seed()
 
@@ -39,126 +36,85 @@ random.seed()
 #========== particle properties ===================
 
 #momenta = [ 1. , 3., 5., 10., 15., 25., 50., 100. ]
-momenta = [ 0.1, 0.2, 0.5, 1., 2., 3., 5., 10., 20. ]
+momenta = [ 0.8 ]
 
 genstat  = 1
-
-## Lambda
-# pdg = 3122
-# charge = 0.
-# mass =  1.115683
-# decayLen = 1.e3
-
-## Muon
-# pdg = -13
-# charge = +1.
-# mass =  0.105658
-# decayLen = 1.e32
-
-## Electron
-pdg = -11
+pdg = -13
 charge = +1.
-mass =  0.000549
-decayLen = 1.e32
+#pdg = 211
+mass =  0.105658 
+# theta = 10./180. * math.pi 
+theta = 20./180. * math.pi 
 
-#theta = 85./180. * math.pi
-#theta = 20./180. * math.pi
-
-#========== detector properties ==================
-
-tpc_rmin = 329.
-tpc_rmax = 1770.
-tpc_zmax = 2350.
-
+decayLen = 1.e32 
 #=================================================
 
 # write a RunHeader
-run = IMPL.LCRunHeaderImpl()
-run.setRunNumber( 0 )
+run = IMPL.LCRunHeaderImpl() 
+run.setRunNumber( 0 ) 
 run.parameters().setValue("Generator","${lcgeo}_DIR/examples/lcio_particle_gun.py")
 run.parameters().setValue("PDG", pdg )
 run.parameters().setValue("Charge", charge )
 run.parameters().setValue("Mass", mass )
-wrt.writeRunHeader( run )
+wrt.writeRunHeader( run ) 
 #================================================
 
-ip = 0
-for p in momenta:
 
+for p in momenta:
+    
     for j in range( 0, nevt ):
 
-        col = IMPL.LCCollectionVec( EVENT.LCIO.MCPARTICLE )
-        evt = IMPL.LCEventImpl()
+        col = IMPL.LCCollectionVec( EVENT.LCIO.MCPARTICLE ) 
+        evt = IMPL.LCEventImpl() 
 
-        evt.setEventNumber( j + ip )
+        evt.setEventNumber( j ) 
 
         evt.addCollection( col , "MCParticle" )
 
-        theta =  random.random() * math.pi
-
         phi =  random.random() * math.pi * 2.
-
-        energy   = math.sqrt( mass*mass  + p * p )
-
-        px = p * math.cos( phi ) * math.sin( theta )
-        py = p * math.sin( phi ) * math.sin( theta )
-        pz = p * math.cos( theta )
-
-        momentum  = array('f',[ px, py, pz ] )
         
-        v_phi =  random.random() * math.pi * 2.
+        energy   = math.sqrt( mass*mass  + p * p ) 
+        
+        px = p * math.cos( phi ) * math.sin( theta ) 
+        py = p * math.sin( phi ) * math.sin( theta )
+        pz = p * math.cos( theta ) 
 
-        r = random.uniform(tpc_rmin,tpc_rmax)
+        momentum  = array('f',[ px, py, pz ] )  
 
-        x = r * math.cos( v_phi )
-        y = r * math.sin( v_phi )
-        #y = math.sqrt( r**2 - x**2 )
-        z = random.uniform(-tpc_zmax,tpc_zmax)
-
-        #if x**2 + y**2 < 329:
-        #print math.sqrt( x**2 + y**2 )
-
-        vertex = array('d',[ x, y, z ] )
-
-        epx = decayLen * math.cos( phi ) * math.sin( theta )
+        epx = decayLen * math.cos( phi ) * math.sin( theta ) 
         epy = decayLen * math.sin( phi ) * math.sin( theta )
-        epz = decayLen * math.cos( theta )
+        epz = decayLen * math.cos( theta ) 
 
-        endpoint = array('d',[ epx, epy, epz ] )
-
+        endpoint = array('d',[ epx, epy, epz ] )  
+        
 
 #--------------- create MCParticle -------------------
+        
+        mcp = IMPL.MCParticleImpl() 
 
-        mcp = IMPL.MCParticleImpl()
-
-        mcp.setGeneratorStatus( genstat )
+        mcp.setGeneratorStatus( genstat ) 
         mcp.setMass( mass )
-        mcp.setPDG( pdg )
+        mcp.setPDG( pdg ) 
         mcp.setMomentum( momentum )
-        mcp.setCharge( charge )
-        mcp.setVertex( vertex )
+        mcp.setCharge( charge ) 
 
         if( decayLen < 1.e9 ) :   # arbitrary ...
-            mcp.setEndpoint( endpoint )
+            mcp.setEndpoint( endpoint ) 
 
 
 #-------------------------------------------------------
 
-
+      
 
 #-------------------------------------------------------
 
 
         col.addElement( mcp )
 
-        wrt.writeEvent( evt )
+        wrt.writeEvent( evt ) 
 
-        if j%100 == 0:
-            print ' Event ' + str(j + ip) + ' saved'
 
-    ip += 1000
-
-wrt.close()
+wrt.close() 
 
 
 #
@@ -182,10 +138,10 @@ wrt.close()
 #    double VHEP3; // z vertex position in mm
 #    double VHEP4; // production time in mm/c
 #
-#    inputFile >> ISTHEP >> IDHEP
+#    inputFile >> ISTHEP >> IDHEP 
 #    >> JMOHEP1 >> JMOHEP2
 #    >> JDAHEP1 >> JDAHEP2
-#    >> PHEP1 >> PHEP2 >> PHEP3
+#    >> PHEP1 >> PHEP2 >> PHEP3 
 #    >> PHEP4 >> PHEP5
 #    >> VHEP1 >> VHEP2 >> VHEP3
 #    >> VHEP4;

@@ -71,6 +71,7 @@
 
     <!-- Reconstruction -->
     <processor name="MyV0Finder" />
+    <processor name="MyStatusmonitor" />
 
     <!-- Output processors -->
     <!--processor name="MyLCIOOutputProcessor" /-->
@@ -84,7 +85,7 @@
     <parameter name="MaxRecordNumber" value="0"/>
     <parameter name="SkipNEvents" value="0"/>
     <parameter name="SupressCheck" value="false"/>
-    <!--parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> DEBUG </parameter-->
+    <parameter name="Verbosity" options="DEBUG40-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> DEBUG </parameter>
     <parameter name="RandomSeed" value="1234567890" />
     <parameter name="OutputSteeringFile" value="MarlinStdRecoParsed.xml"/>
   </global>
@@ -94,11 +95,14 @@
     <parameter name="InputRecoParticleCollection" type="string"> PandoraPFOs</parameter>
     <parameter name="TrackCollection" type="string"> MarlinTrkTracks</parameter>
     <parameter name="RecoParticleCollection" type="string"> V0RecoParticlesTest </parameter>
-    <parameter name="VertexCollection" type="string"> V0VerticesTest </parameter>
+    <parameter name="VertexCollection" type="string"> LLPVerticesTest </parameter>
+    <parameter name="CutOnRadius"      type="float">  0.001 </parameter>
+    <parameter name="CutOnTrkDistance"      type="float">  5000 </parameter>
+    <parameter name="MinimumTrackHitRatio"  type="float">  0.9 </parameter>
     <parameter name="MassRangeGamma"  type="float">  0.01 </parameter>
     <parameter name="MassRangeK0S"    type="float">  0.1 </parameter>
     <parameter name="MassRangeL0"     type="float">  0.1 </parameter>
-    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> DEBUG </parameter>
+    <parameter name="Verbosity" options="DEBUG40-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> DEBUG </parameter>
   </processor>
 
   <!-- Init processors : histograming, logging, geometry ... -->
@@ -120,7 +124,7 @@
     <!--Statusmonitor prints out information on running Marlin Job: Prints number of runs run and current number of the event. Counting is sequential and not the run or event ID.-->
     <!--Print the event number every N events-->
     <parameter name="HowOften" type="int">1 </parameter>
-    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <!--verbosity level of this processor ("DEBUG40-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
     <!-- <parameter name="Verbosity" type="string">MESSAGE </parameter> -->
   </processor>
 
@@ -207,6 +211,7 @@
     <parameter name="KeepCollectionNames" type="StringVec">
       MCParticlesSkimmed
       MarlinTrkTracks
+      RefittedMarlinTrkTracks
       MarlinTrkTracksProton
       MarlinTrkTracksKaon
       MCTruthMarlinTrkTracksLink
@@ -234,7 +239,7 @@
     <parameter name="MCPfoSelectionMomentum" type="float">0.01 </parameter>
     <!--MC pfo selection neutron and proton low energy cut-off-->
     <parameter name="MCPfoSelectionLowEnergyNPCutOff" type="float">1.2 </parameter>
-    <!--Set the debug print level-->
+    <!--Set the DEBUG4 print level-->
     <parameter name="Printing" type="int">0 </parameter>
     <!--Name of the output root file-->
     <parameter name="RootFile" type="string"> ${PfoOutputFile} </parameter>
@@ -277,8 +282,8 @@
     <!--Name of the LCal collection post ddsim, pre digitisation-->
     <parameter name="LCalCollectionsSimCaloHit" type="StringVec" lcioInType="SimCalorimeterHit">LumiCalCollection</parameter>
 
-    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
-    <!--parameter name="Verbosity" type="string">DEBUG </parameter-->
+    <!--verbosity level of this processor ("DEBUG40-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <!--parameter name="Verbosity" type="string">DEBUG4 </parameter-->
   </processor>
 
 </marlin>
