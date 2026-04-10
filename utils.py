@@ -41,7 +41,10 @@ def getTrackMomentum(track):
 	tanLambda = track.getTanLambda()
 	omega = track.getOmega()
 
-	radius = 1./abs(omega)
+	if omega != 0:
+		radius = 1./abs(omega)
+	else:
+		radius = 0.
 	pxy = FCT * bField * radius
 	momentum[0] = pxy * math.cos(phi)
 	momentum[1] = pxy * math.sin(phi)
@@ -104,7 +107,7 @@ def angularDistance(theta1, theta2, phi1, phi2):
 def spacialDistance(v1, v2):
 
 	dist = (v1[0]-v2[0])**2 + (v1[1]-v2[1])**2 + (v1[2]-v2[2])**2
-	return math.sqrt(dist)
+	return float(math.sqrt(dist))
 
 def getNextTrackState(trackState0, hit, loc):
 
@@ -435,3 +438,25 @@ def get_inv_mass(mom1, mass1, mom2, mass2):
 
 	return M_inv
 	
+def get_true_d0(particle):
+
+	q = particle.getCharge()
+	mom = particle.getMomentum()
+	pxy = math.sqrt( mom[0]**2 + mom[1]**2 )
+	radius = pxy / (FCT*bField)
+	pos = particle.getVertex()
+
+
+	phiMomRefPoint = math.atan2(mom[1],mom[0])
+	xCentre = pos[0] + radius*math.cos(phiMomRefPoint-q*math.pi/2)
+	yCentre = pos[1] + radius*math.sin(phiMomRefPoint-q*math.pi/2)
+
+	# print("get_true_d0(particle): ", particle.getPDG(), pos[0], pos[1], pos[2] )
+	# print("get_true_d0(particle): ", radius, xCentre, yCentre, math.sqrt(xCentre*xCentre+yCentre*yCentre) )
+
+	# if (q>0):
+	d0 = q*radius - (math.sqrt(xCentre*xCentre+yCentre*yCentre))
+	if (q<0):
+		d0 = q*radius + (math.sqrt(xCentre*xCentre+yCentre*yCentre))
+
+	return d0

@@ -15,17 +15,18 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
     trueL = utils.spacialDistance(llp_endpoint, [0,0,0])
     in_acceptance = (trueR <= 1808) and abs(trueZ) <= 2350
     in_TPC = in_acceptance and trueR >= 329
-    cosOpenAngleTruth = math.cos(mclep1.Angle(mclep2.Vect()))
+    openAngle = mclep1.Angle(mclep2.Vect())
+    cosOpenAngleTruth = math.cos(openAngle)
 
     vtx_conversions = []
     n_vtx_conversions = match_converted_photons(mcCollection, vertexCollection, \
                                                 vtx_conversions)
     
-    if vertexCollection.getNumberOfElements() == 0:
-        if (trueR > 330 and trueR < 1300) and (trueZ > -1000 and trueZ < 1000):
-            print('no good vtx in ev. ' + str(iEvt) + ' with ' + str(vertexCollection.getNumberOfElements()) + ' vertices')
-            print('true vertex at: ', llp_endpoint[0],llp_endpoint[1],llp_endpoint[2])
-            print('')
+    # # if vertexCollection.getNumberOfElements() < 1:
+    # if (trueR > 330 and trueR < 1300) and math.fabs(trueZ) < 200:
+    #     print('vtx in ev. ' + str(iEvt) + ' with ' + str(vertexCollection.getNumberOfElements()) + ' vertices')
+    #     print('true vertex at: ', llp_endpoint[0],llp_endpoint[1],llp_endpoint[2])
+    #     # print('')
 
     for vtx in vertexCollection:
 
@@ -155,6 +156,10 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
 
             omega1 = trkSt1.getOmega()
             omega2 = trkSt2.getOmega()
+            if omega1 == 0 or omega2 == 0:
+                # print('omega1 or omega2 is zero for tracks: ', trksVec[iTrk].id(), trksVec[iTrk+1].id())
+                iTrk+=2
+                continue
             q1 = omega1/abs(omega1)
             q2 = omega2/abs(omega2)
             ratio = abs(omega1/omega2)
@@ -186,6 +191,12 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
             if isV0 == 1:
                 iTrk+=2
                 continue
+
+
+            # if (trueR > 330 and trueR < 1300) and math.fabs(trueZ) < 200:
+            #     print('vtx in ev. ' + str(iEvt) + ' with ' + str(vertexCollection.getNumberOfElements()) + ' vertices')
+            #     print('true vertex at: ', llp_endpoint[0],llp_endpoint[1],llp_endpoint[2])
+            #     print('')
 
 
             # minDistToV0 = 1.e9
@@ -251,16 +262,16 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
                 p3_trk = ROOT.TVector3()
                 p3_trk.SetXYZ(p_trk[0],p_trk[1],p_trk[2])
 
-                # if trk.id() == trksVec[iTrk].id() or trk.id() == trksVec[iTrk+1].id():
-                if trk in [trksVec[iTrk],trksVec[iTrk+1]]: # skip track if it's coming out of this vtx
-                    # print('found track assigned to vertex ending at: ', [endpoint[edx] for edx in range(3)])
-                    continue
-                
                 if cat == 'trsm':  # reject event if a hard track not from a vtx from IP is found
                     if (abs(trk.getD0()) < 10 or abs(trk.getZ0()) < 10) and trk not in trksVec and p3_trk.Mag() > 2 \
                         and ((trk_fhit < 155 and abs(startpoint[2]) > 215) or trk_fhit < 20):
                         # print(iEvt, [startpoint[x] for x in range(3)], [endpoint[x] for x in range(3)], trk.getD0(), len(trksVec))
                         return False
+
+                # if trk.id() == trksVec[iTrk].id() or trk.id() == trksVec[iTrk+1].id():
+                if trk in [trksVec[iTrk],trksVec[iTrk+1]]: # skip track if it's coming out of this vtx
+                    # print('found track assigned to vertex ending at: ', [endpoint[edx] for edx in range(3)])
+                    continue
 
                 distance = []
                 time = utils.getDistanceToPoint(trk,pos,distance)
@@ -286,10 +297,10 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
                 # print(i, "cut on secondary interaction")
                 iTrk+=2
                 continue
-            # if coneP > 1:
-            # 	# print(i, "cut on isolation")
-            # 	iTrk+=2
-            # 	continue
+            if coneP > 1:
+            	# print(i, "cut on isolation")
+                iTrk+=2
+                continue
             
             
             if cat == 'trsm': # additional cut on vtx_pT for higgs decays
@@ -532,24 +543,24 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
                 iTrk+=2
                 continue
 
-            # # # cuts excluding ma = 300 MeV scenario
-            # if ee_mass < constants.GAMMA_MASS + 0.7:
-            #     counter.increment("_eeMassCut", True, 1)
-            #     iTrk+=2
-            #     continue
-            # if pipi_mass < 0.7:
-            #     counter.increment("_pipiMassCut", True, 1)
-            #     iTrk+=2
-            #     continue
+            # # cuts excluding ma = 300 MeV scenario
+            if ee_mass < constants.GAMMA_MASS + 0.7:
+                counter.increment("_eeMassCut", True, 1)
+                iTrk+=2
+                continue
+            if pipi_mass < 0.7:
+                counter.increment("_pipiMassCut", True, 1)
+                iTrk+=2
+                continue
 
-            # if proton_pion_mass > constants.LAMBDA_MASS - 0.02 and proton_pion_mass < constants.LAMBDA_MASS + 0.02:
-            #     counter.increment("_lambdaMassCut", True, 1)
-            #     iTrk+=2
-            #     continue
-            # if pion_proton_mass > constants.LAMBDA_MASS - 0.02 and pion_proton_mass < constants.LAMBDA_MASS + 0.02:
-            #     counter.increment("_lambdaMassCut", True, 1)
-            #     iTrk+=2
-            #     continue
+            if proton_pion_mass > constants.LAMBDA_MASS - 0.02 and proton_pion_mass < constants.LAMBDA_MASS + 0.02:
+                counter.increment("_lambdaMassCut", True, 1)
+                iTrk+=2
+                continue
+            if pion_proton_mass > constants.LAMBDA_MASS - 0.02 and pion_proton_mass < constants.LAMBDA_MASS + 0.02:
+                counter.increment("_lambdaMassCut", True, 1)
+                iTrk+=2
+                continue
 
             histograms.ee_hypo_mass.Fill( ee_mass )
             histograms.pipi_hypo_mass.Fill( pipi_mass )
@@ -561,7 +572,7 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
             histograms.ee_mass_vs_R.Fill( ee_mass, utils.R(pos[0],pos[1]) )
             histograms.pipi_mass_vs_R.Fill( pipi_mass, utils.R(pos[0],pos[1]) )
 
-            histograms.vtxEffVsR_reco.Fill( utils.R(pos[0],pos[1]) )
+            # histograms.vtxEffVsR_reco.Fill( utils.R(pos[0],pos[1]) )
 
             reco_in_TPC =  (utils.R(pos[0], pos[1]) >= 329) \
                             and (utils.R(pos[0], pos[1]) <= 1808) \
@@ -589,6 +600,9 @@ def vertex_analysis(event, cat, vertexCollection, trackCollection, mcCollection,
 
                 if dist < 30:
                     histograms.vtxEffRVsZ_reco.Fill(trueZ,trueR)
+                    histograms.vtxEffVsR_reco.Fill( utils.R(pos[0],pos[1]) )
+                    histograms.vtxEffOpenAngleVsR_reco.Fill(math.fabs(openAngle),trueR)
+                    histograms.vtxEffSmallOpenAngleVsR_reco.Fill(math.fabs(openAngle),trueR)
                     histograms.vtxEffVsPt_reco.Fill((mclep1+mclep2).Pt())
                     histograms.vtxEffVsP_reco.Fill((mclep1+mclep2).P())
                     # if (mclep1+mclep2).Pt() < 40:

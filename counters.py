@@ -30,9 +30,12 @@ class Counters:
         self._lambdaMassCut = 0
         self._pointingIPCut = 0
         self._weightedEvents = np.zeros(9)
+        self._weightedEventsInAcceptance = np.zeros(9)
         self._weightedEventsInTPC = np.zeros(9)
+        self._matchingWeightedEventsAcceptance = np.zeros(9)
         self._matchingWeightedEventsTPC = np.zeros(9)
         self._weightedEventsErr = np.zeros(9)
+        self._matchingWeightedEventsAcceptErr = np.zeros(9)
         self._matchingWeightedEventsTPCErr = np.zeros(9)
 
     def increment(self, variable, condition, value):
