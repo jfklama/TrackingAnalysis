@@ -11,9 +11,9 @@ Long-Lived Particles travel a macroscopic distance before decaying, leaving a di
 | Model | Abbreviation | Kinematic regime | Decay signature |
 |---|---|---|---|
 | Inert Doublet Model | IDM | ΔM = 1-5 GeV | A → Z* l+l− |
-| Feebly-Interacting Massive Particle | FIMP | M = 60–110 GeV | χ → l+l−ν |
+| Feebly-Interacting Massive Particle | FIMP | M = 60–110 GeV | F+/− → χl+/− |
 | Axion-Like Particle | ALP | M = 0.3–10 GeV | a → γγ |
-| Two-Real-Singlet Model | TRSM | M = 0.4–60 GeV | S → bb̄, ττ |
+| Two-Real-Singlet Model | TRSM | M = 0.4–60 GeV | S → l+l− |
 
 ## Software stack
 
