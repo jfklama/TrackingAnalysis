@@ -8,12 +8,12 @@ Long-Lived Particles travel a macroscopic distance before decaying, leaving a di
 
 ## Physics models
 
-| Model | Abbreviation | Masses studied | Decay signature |
+| Model | Abbreviation | Kinematic regime | Decay signature |
 |---|---|---|---|
-| Inert Doublet Model | IDM | ΔM = 10–100 GeV | A → Z* l+l− |
-| Feebly-Interacting Massive Particle | FIMP | 60–450 GeV | χ → l+l−ν |
-| Axion-Like Particle | ALP | 0.3–10 TeV | a → γγ |
-| Twin Radiative Seesaw Model | TRSM | 0.4–60 GeV | S → bb̄, ττ |
+| Inert Doublet Model | IDM | ΔM = 1-5 GeV | A → Z* l+l− |
+| Feebly-Interacting Massive Particle | FIMP | M = 60–110 GeV | χ → l+l−ν |
+| Axion-Like Particle | ALP | M = 0.3–10 GeV | a → γγ |
+| Two-Real-Singlet Model | TRSM | M = 0.4–60 GeV | S → bb̄, ττ |
 
 ## Software stack
 
@@ -24,7 +24,7 @@ Long-Lived Particles travel a macroscopic distance before decaying, leaving a di
 - **numpy / scipy** — numerical utilities
 - **pytest** — unit tests
 
-The full ILD software environment is available via [iLCSoft](https://github.com/iLCSoft).
+The full ILD software environment is necessary to run this code. It is available via [iLCSoft](https://github.com/iLCSoft).
 
 ## Analysis pipeline
 
@@ -34,7 +34,7 @@ The full ILD software environment is available via [iLCSoft](https://github.com/
 3. Reconstruction Marlin (MarlinStdReco)  →  tracks, vertices, PFOs
 4. LLP refit      LLPRefitProcessor       →  secondary vertex candidates
 5. Analysis       run_*_analysis.py       →  ROOT histograms, efficiency tables
-6. Limits         calc_upper_lim.py       →  95% CL exclusion contours
+6. Limits         plot_limits.py       →  95% CL exclusion contours
 ```
 
 ## Repository structure
@@ -44,7 +44,8 @@ The full ILD software environment is available via [iLCSoft](https://github.com/
 | `tracking.py` | Track-to-MC matching, efficiency histograms |
 | `vertex_finding.py` | Secondary vertex matching, V0/conversion veto |
 | `idm_analysis.py` | Main analysis loop for the IDM model |
-| `sm_analysis.py`, `v0_analysis.py` | Standard Model background and V0 validation |
+| `overlay_analysis.py` | Main analysis loop for the SM backgrounds |
+| `sm_analysis.py`, `v0_analysis.py` | Legacy Standard Model background and V0 validation |
 | `run_idm_analysis.py` etc. | Batch launchers for each physics model |
 | `utils.py` | Geometry helpers, helix calculations, invariant mass |
 | `constants.py` | Detector geometry and particle mass constants |
@@ -113,4 +114,4 @@ The test suite covers the pure-Python utility functions (geometry, helix math, a
 
 ## C++ processors
 
-**LLPFinder** identifies displaced vertex topologies by looking for pairs of tracks with large impact parameters and small distances of closest approach. **LLPRefitProcessor** refits these tracks constrained to the secondary vertex position, improving the invariant mass resolution. Both processors are built with CMake against a Marlin installation. See [LLPRefitProcessor/README.md](LLPRefitProcessor/README.md) for build instructions.
+**LLPFinder** identifies displaced vertex topologies by looking for pairs of tracks with large impact parameters and small distances of closest approach. **LLPRefitProcessor** can be used to refit the tracks, potentially improving the efficiency of the **LLPFinder**. Both processors are built with CMake against a Marlin installation. See [LLPRefitProcessor/README.md](LLPRefitProcessor/README.md) for build instructions.
