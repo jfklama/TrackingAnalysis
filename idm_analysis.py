@@ -45,8 +45,12 @@ def process_event(event,counter, histograms, cat, fs, decay_lengths):
 	elif cat.find('Silicon') == -1:
 		trackCollection = event.getCollection('MarlinTrkTracks')
 		trackToMCLinkCollection = event.getCollection('MarlinTrkTracksMCTruthLink')
-		refitTrackCollection = event.getCollection('RefittedMarlinTrkTracks')
-		refitTrackToMCLinkCollection = event.getCollection('RefittedMarlinTrkTracksMCTruthLink')
+		if 'LLPVertRefittedMarlinTrkTracksices' in event.getCollectionNames():
+			refitTrackCollection = event.getCollection('RefittedMarlinTrkTracks')
+			refitTrackToMCLinkCollection = event.getCollection('RefittedMarlinTrkTracksMCTruthLink')
+		else:
+			refitTrackCollection = event.getCollection('MarlinTrkTracks') # FIXME for now use refitted only if stated explicitly
+			refitTrackToMCLinkCollection = event.getCollection('MarlinTrkTracksMCTruthLink')
 		subsetTrackCollection = event.getCollection('SubsetTracks')
 		# siTrackCollection = event.getCollection('SiTracks')
 		# TPCHitRelations = event.getCollection('TPCTrackerHitRelations')
@@ -93,6 +97,8 @@ def process_event(event,counter, histograms, cat, fs, decay_lengths):
 		if(particle.getPDG() == llp_pdg and particle.getGeneratorStatus() == gen_status_llp):
 			if len(particle.getDaughters()) == 1:
 				continue
+			if particle.vertexIsNotEndpointOfParent():
+				continue
 			llp_endpoint = particle.getEndpoint()
 			trueR = utils.R(llp_endpoint[0], llp_endpoint[1])
 			trueZ = llp_endpoint[2]
@@ -114,6 +120,8 @@ def process_event(event,counter, histograms, cat, fs, decay_lengths):
 	for particle in mcCollection:
 		if(particle.getPDG() == llp_pdg and particle.getGeneratorStatus() == gen_status_llp):
 			if len(particle.getDaughters()) == 1:
+				continue
+			if particle.vertexIsNotEndpointOfParent():
 				continue
 			llp_endpoint = particle.getEndpoint()
 			trueR = utils.R(llp_endpoint[0], llp_endpoint[1])
@@ -231,10 +239,10 @@ def process_llp(iEvt, event, counter, histograms, cat, fs, decay_lengths, \
 		# print(decay_lengths)
 		# print(weights,'\n')
 
-	if trueR > 200 and trueR < 300:
-		print(iEvt)
-		print('trueRs =', trueRs)
-		print('secondary vertices: ', nVTX)
+	# if trueR > 200 and trueR < 300:
+	# 	print(iEvt)
+	# 	print('trueRs =', trueRs)
+	# 	print('secondary vertices: ', nVTX)
 		
 	# print("Sum of weighted events: ", counter._weightedEvents[4])
 	
@@ -394,8 +402,15 @@ def process_llp(iEvt, event, counter, histograms, cat, fs, decay_lengths, \
 		#if nFSParticle1>0 and nFSParticle2>0:
 		#	print (iEvt, 'electron and muon!')
 	
-
-	histograms.cosOpenAngleVtx_true.Fill( math.cos(mclep1.Angle(mclep2.Vect())) )
+	openAngle = mclep1.Angle(mclep2.Vect())
+	histograms.cosOpenAngleVtx_true.Fill( math.cos(openAngle) )
+	if all(l < l_max for l in trueLs):
+		histograms.vtxEffOpenAngleVsR_true.Fill( math.fabs(openAngle), trueR )
+		histograms.vtxEffSmallOpenAngleVsR_true.Fill( math.fabs(openAngle), trueR )
+		# if math.fabs(openAngle) < 0.01:
+		# 	print(iEvt, 'openAngle:', openAngle, 'trueR:', trueR, 'trueZ:', trueZ, 'trueL:', trueL)
+		# 	print(iEvt, 'mclep1:', mclep1.Px(), mclep1.Py(), mclep1.Pz(), mclep1.E())
+		# 	print(iEvt, 'mclep2:', mclep2.Px(), mclep2.Py(), mclep2.Pz(), mclep2.E())
 
 	if nLLPsInEvent[0] < 2:
 	
@@ -452,6 +467,14 @@ def process_llp(iEvt, event, counter, histograms, cat, fs, decay_lengths, \
 			# print('weights:', weights)
 			# print('(weights)**2:', (weights)**2)
 			# print('')
+		# elif trueR > 400 and abs(trueZ) < 200:
+		# 	print(iEvt, 'WARNING: no matching vertex found for LLP with R =', trueR, 'Z =', trueZ, 'L =', trueL)
+
+	if 'LLPVertices' not in event.getCollectionNames():
+		if (trueR > 330 and trueR < 1300) and math.fabs(trueZ) < 200:
+			print('no vtx in ev. ' + str(iEvt) + ' with 0 vertices')
+			print('true vertex at: ', llp_endpoint[0],llp_endpoint[1],llp_endpoint[2])
+			print('')
 
 
 	#########################################

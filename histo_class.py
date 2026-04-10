@@ -101,6 +101,10 @@ class Histograms:
         self.vtxRefZVsLhZ = ROOT.TH2F('vtxRefZVsLhZ', 'Vtx dist. in z from ref. pt. and last hit', 50, -0.5, 1, 50, -1, 1)
         self.vtxRefZVsLenZ = ROOT.TH2F('vtxRefZVsLenZ', 'Vtx dist. from ref. pt. and trk len. in z', 50, -1.0, 1, 50, logx)
         self.vtxIso = ROOT.TH2F('vtxIso', 'Momentum of tracks at vertex and cone around them', 50, 0, 15, 200, 0, 20)
+        self.vtxEffOpenAngleVsR_true = ROOT.TH2F('vtxEffOpenAngleVsR_true', 'True vertices', 50, 0., 3.15, 50, 0., constants.TPC_R_MAX)
+        self.vtxEffOpenAngleVsR_reco = ROOT.TH2F('vtxEffOpenAngleVsR_reco', 'True vertices if vtx was reconstructed', 50, 0., 3.15, 50, 0., constants.TPC_R_MAX)
+        self.vtxEffSmallOpenAngleVsR_true = ROOT.TH2F('vtxEffSmallOpenAngleVsR_true', 'True vertices', 50, 0., 1., 50, 0., constants.TPC_R_MAX)
+        self.vtxEffSmallOpenAngleVsR_reco = ROOT.TH2F('vtxEffSmallOpenAngleVsR_reco', 'True vertices if vtx was reconstructed', 50, 0., 1., 50, 0., constants.TPC_R_MAX)
 
 		
         # tracks assoc. to vertex
@@ -498,6 +502,22 @@ class Histograms:
         ROOT.gPad.Update()
         '''
         c1.SaveAs('plots/'+cat+'/'+fs+'/'+scenario+'/vtxEffRVsZ_'+fs+'.pdf')
+		
+        vtxEffOpenAngleVsR = get_2d_eff_plot(self.vtxEffOpenAngleVsR_reco,self.vtxEffOpenAngleVsR_true, 
+										  "vtxEffOpenAngleVsR")
+        vtxEffOpenAngleVsR.SetTitle(';#theta_{vtx};R [mm];Efficiency')
+        vtxEffOpenAngleVsR.SetMaximum(1.)
+        vtxEffOpenAngleVsR.SetStats(0)
+        vtxEffOpenAngleVsR.Draw('colz')
+        c1.SaveAs('plots/'+cat+'/'+fs+'/'+scenario+'/vtxEffOpenAngleVsR_'+cat+'.pdf')
+		
+        vtxEffSmallOpenAngleVsR = get_2d_eff_plot(self.vtxEffSmallOpenAngleVsR_reco,self.vtxEffSmallOpenAngleVsR_true, 
+										  "vtxEffSmallOpenAngleVsR")
+        vtxEffSmallOpenAngleVsR.SetTitle(';#theta_{vtx};R [mm];Efficiency')
+        vtxEffSmallOpenAngleVsR.SetMaximum(1.)
+        vtxEffSmallOpenAngleVsR.SetStats(0)
+        vtxEffSmallOpenAngleVsR.Draw('colz')
+        c1.SaveAs('plots/'+cat+'/'+fs+'/'+scenario+'/vtxEffSmallOpenAngleVsR_'+cat+'.pdf')
 
         self.vtxEffRVsZ_true.SetYTitle('R [mm]')
         self.vtxEffRVsZ_true.SetXTitle('z [mm]')
@@ -593,6 +613,11 @@ class Histograms:
         self.vtxRefPointDistsVsCentres.SetZTitle('Number of tracks')
         self.vtxRefPointDistsVsCentres.SetStats(0)
         self.vtxRefPointDistsVsCentres.Draw('colz')
+        fun = ROOT.TF1("fun", "[0]*x+[1]", 0.1, 3000.0)
+        fun.SetParameters(2.2,0.0)
+        fun.SetLineColor(2)
+        fun.SetLineWidth(2)
+        fun.Draw("SAME")
         c1.SaveAs('plots/'+cat+'/'+fs+'/'+scenario+'/vtxRefPointDistsVsCentres_'+fs+'.pdf')
         c1.SetLogx(0)
         # print vtxTrksCentresRefPointsDist.Integral()

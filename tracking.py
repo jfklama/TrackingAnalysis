@@ -135,8 +135,8 @@ def analyse_tracks(mcCollection, trackCollection, \
 							histograms.trackEffVsL_reco.Fill(trueL)
 							histograms.trackEffRVsZ_reco.Fill(trueZ,trueR)
 
-							# if trueR > 500:
-							# 	print(iEvt, trueR)
+							# if trueR > 1200 and math.fabs(trueZ) < 200:
+							# 	print(iEvt, trueR, trueZ)
 
 							# print(iEvt, "track:", trueR, trueZ)
 
@@ -158,7 +158,7 @@ def analyse_tracks(mcCollection, trackCollection, \
 	# 		print(mclepP4s[0].Px(),mclepP4s[0].Py(),mclepP4s[0].Pz() )
 	# 		print(mclepP4s[1].Px(),mclepP4s[1].Py(),mclepP4s[1].Pz() )
 
-	# if len(mclepP4s) > matchingTracksInEvent and trueR > 330:
+	# if len(mclepP4s) > matchingTracksInEvent and trueR > 400 and math.fabs(trueZ) < 200:
 	# 		print(track_col)
 	# 		print (iEvt, matchingTracksInEvent, trueR, trueZ, mclepP4s[0].Theta(), mclepP4s[1].Theta())
 	# 		print(mclepP4s[0].Px(),mclepP4s[0].Py(),mclepP4s[0].Pz() )
