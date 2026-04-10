@@ -26,6 +26,8 @@ Long-Lived Particles travel a macroscopic distance before decaying, leaving a di
 
 The full ILD software environment is necessary to run this code. It is available via [iLCSoft](https://github.com/iLCSoft).
 
+Contents of **StandardConfig /production** from the **ILDConfig** package should be copied into this repository.
+
 ## Analysis pipeline
 
 ```
